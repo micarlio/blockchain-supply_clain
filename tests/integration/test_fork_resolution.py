@@ -1,10 +1,10 @@
 """Teste de integracao para deteccao de fork e resolucao de conflito."""
 
-from core.config import CoreConfig
-from core.models.block import Block
-from core.models.event import SupplyChainEvent
-from core.services.blockchain import Blockchain
-from core.services.miner import Miner
+from src.core.config import CoreConfig
+from src.core.models.block import Block
+from src.core.models.event import SupplyChainEvent
+from src.core.services.blockchain import Blockchain
+from src.core.services.miner import Miner
 
 
 def criar_evento(event_id: str) -> SupplyChainEvent:

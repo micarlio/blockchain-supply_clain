@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from core.config import CoreConfig
-from core.models.block import Block
-from core.models.event import SupplyChainEvent
+from src.core.config import CoreConfig
+from src.core.models.block import Block
+from src.core.models.event import SupplyChainEvent
 
 
 def _inteiro_nao_negativo(value: object) -> bool:

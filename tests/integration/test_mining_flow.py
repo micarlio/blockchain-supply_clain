@@ -1,8 +1,8 @@
 """Teste de integracao do fluxo local de mineracao com `LocalNode`."""
 
-from core.config import CoreConfig
-from core.demo.local_node import LocalNode
-from core.models.event import SupplyChainEvent
+from src.core.config import CoreConfig
+from src.core.demo.local_node import LocalNode
+from src.core.models.event import SupplyChainEvent
 
 
 def criar_evento(event_id: str) -> SupplyChainEvent:

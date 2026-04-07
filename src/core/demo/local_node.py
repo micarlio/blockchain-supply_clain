@@ -5,13 +5,13 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from core.config import CoreConfig
-from core.models.block import Block
-from core.models.event import SupplyChainEvent
-from core.serialization.json_codec import bloco_para_dict
-from core.services.blockchain import Blockchain
-from core.services.mempool import Mempool
-from core.services.miner import Miner
+from src.core.config import CoreConfig
+from src.core.models.block import Block
+from src.core.models.event import SupplyChainEvent
+from src.core.serialization.json_codec import bloco_para_dict
+from src.core.services.blockchain import Blockchain
+from src.core.services.mempool import Mempool
+from src.core.services.miner import Miner
 
 
 @dataclass(slots=True)

@@ -1,10 +1,10 @@
 """Teste de integracao para recepcao de bloco externo."""
 
-from core.config import CoreConfig
-from core.models.block import Block
-from core.models.event import SupplyChainEvent
-from core.serialization.json_codec import bloco_para_dict
-from core.services.blockchain import (
+from src.core.config import CoreConfig
+from src.core.models.block import Block
+from src.core.models.event import SupplyChainEvent
+from src.core.serialization.json_codec import bloco_para_dict
+from src.core.services.blockchain import (
     STATUS_BLOCO_ADICIONADO,
     STATUS_BLOCO_FORK,
     STATUS_BLOCO_IGNORADO_PROPRIO_NO,
@@ -12,7 +12,7 @@ from core.services.blockchain import (
     STATUS_CADEIA_REORGANIZADA,
     Blockchain,
 )
-from core.services.miner import Miner
+from src.core.services.miner import Miner
 
 
 def criar_evento(event_id: str) -> SupplyChainEvent:

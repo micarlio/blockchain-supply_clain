@@ -2,9 +2,9 @@
 
 import pytest
 
-from core.models.block import Block
-from core.models.event import SupplyChainEvent
-from core.serialization.json_codec import (
+from src.core.models.block import Block
+from src.core.models.event import SupplyChainEvent
+from src.core.serialization.json_codec import (
     bloco_de_json,
     bloco_para_json,
     evento_de_json,

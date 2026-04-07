@@ -6,13 +6,13 @@ from copy import deepcopy
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
-from core.config import CoreConfig
-from core.models.block import Block
-from core.models.event import SupplyChainEvent
+from src.core.config import CoreConfig
+from src.core.models.block import Block
+from src.core.models.event import SupplyChainEvent
 
 if TYPE_CHECKING:
-    from core.services.blockchain import Blockchain
-    from core.services.mempool import Mempool
+    from src.core.services.blockchain import Blockchain
+    from src.core.services.mempool import Mempool
 
 
 def _timestamp_utc_atual() -> str:

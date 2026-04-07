@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 
-from core.models.event import SupplyChainEvent
+from src.core.models.event import SupplyChainEvent
 
 
 class Mempool:

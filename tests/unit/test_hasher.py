@@ -2,7 +2,7 @@
 
 import pytest
 
-from core.services.hasher import (
+from src.core.services.hasher import (
     calcular_hash_bloco,
     calcular_hash_dados,
     calcular_sha256_hex,

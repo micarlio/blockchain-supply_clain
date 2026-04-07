@@ -1,6 +1,6 @@
 """Testes unitarios do modelo de evento."""
 
-from core.models.event import SupplyChainEvent
+from src.core.models.event import SupplyChainEvent
 
 
 def criar_evento_valido() -> SupplyChainEvent:

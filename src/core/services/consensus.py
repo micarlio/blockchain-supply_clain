@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 
-from core.models.block import Block
+from src.core.models.block import Block
 
 
 class Consensus:

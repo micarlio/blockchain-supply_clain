@@ -9,9 +9,9 @@ if __package__ in (None, ""):
     # Isso permite rodar o arquivo direto com `python3 src/core/demo/simulate_fork.py`.
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from core.config import CoreConfig
-from core.demo.local_node import LocalNode
-from core.models.event import SupplyChainEvent
+from src.core.config import CoreConfig
+from src.core.demo.local_node import LocalNode
+from src.core.models.event import SupplyChainEvent
 
 
 def criar_evento_conflitante(

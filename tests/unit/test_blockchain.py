@@ -1,9 +1,9 @@
 """Testes unitarios do servico de blockchain."""
 
-from core.config import CoreConfig
-from core.models.block import Block
-from core.models.event import SupplyChainEvent
-from core.services.blockchain import Blockchain
+from src.core.config import CoreConfig
+from src.core.models.block import Block
+from src.core.models.event import SupplyChainEvent
+from src.core.services.blockchain import Blockchain
 
 
 def criar_evento_valido() -> SupplyChainEvent:

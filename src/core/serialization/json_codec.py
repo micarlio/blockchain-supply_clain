@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import json
 
-from core.models.block import Block
-from core.models.event import SupplyChainEvent
-from core.services.hasher import serializar_json_estavel
+from src.core.models.block import Block
+from src.core.models.event import SupplyChainEvent
+from src.core.services.hasher import serializar_json_estavel
 
 
 def _json_para_dict(payload: str) -> dict[str, object] | None:

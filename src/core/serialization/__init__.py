@@ -1,6 +1,6 @@
 """Utilitarios de serializacao para integracao via transporte."""
 
-from core.serialization.json_codec import (
+from src.core.serialization.json_codec import (
     block_from_dict,
     block_from_json,
     block_to_dict,

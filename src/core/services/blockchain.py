@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from copy import deepcopy
 
-from core.config import CoreConfig
-from core.models.block import Block
-from core.services.consensus import Consensus
-from core.services.validator import Validator
+from src.core.config import CoreConfig
+from src.core.models.block import Block
+from src.core.services.consensus import Consensus
+from src.core.services.validator import Validator
 
 GENESIS_TIMESTAMP = "2026-01-01T00:00:00Z"
 GENESIS_PREVIOUS_HASH = "GENESIS"
@@ -120,7 +120,7 @@ class Blockchain:
     def processar_bloco_recebido(self, payload: dict[str, object]) -> str:
         """Recebe o payload pronto da comunicacao e tenta encaixar o bloco."""
 
-        from core.serialization.json_codec import bloco_de_dict
+        from src.core.serialization.json_codec import bloco_de_dict
 
         block = bloco_de_dict(payload)
         if block is None:

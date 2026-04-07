@@ -1,8 +1,8 @@
 """Testes unitarios do modelo de bloco."""
 
-from core.models.block import Block
-from core.models.event import SupplyChainEvent
-from core.services.hasher import calcular_hash_bloco, calcular_hash_dados
+from src.core.models.block import Block
+from src.core.models.event import SupplyChainEvent
+from src.core.services.hasher import calcular_hash_bloco, calcular_hash_dados
 
 
 def criar_evento_base() -> SupplyChainEvent:

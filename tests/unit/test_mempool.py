@@ -1,7 +1,7 @@
 """Testes unitarios da mempool."""
 
-from core.models.event import SupplyChainEvent
-from core.services.mempool import Mempool
+from src.core.models.event import SupplyChainEvent
+from src.core.services.mempool import Mempool
 
 
 def criar_evento(event_id: str) -> SupplyChainEvent:

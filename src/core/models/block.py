@@ -5,8 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from core.models.event import SupplyChainEvent
-from core.services.hasher import (
+from src.core.models.event import SupplyChainEvent
+from src.core.services.hasher import (
     calcular_hash_bloco as calcular_hash_bloco_cabecalho,
     calcular_hash_dados as calcular_hash_dados_eventos,
 )
