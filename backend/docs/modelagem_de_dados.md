@@ -242,3 +242,12 @@ Esta modelagem foi feita para a demonstracao da V1. Ela nao cobre, por enquanto:
 - auditoria juridica de identidade
 
 Mesmo com essas simplificacoes, a modelagem atual ja e suficiente para demonstrar formacao de produtos, rastreabilidade recursiva, conflito de consumo, fork e reorganizacao.
+
+## 11. Investigação Arquitetural: Otimização do Rastreio (SPV)
+
+Em uma aplicação comercial em grande escala no mundo real (ex: o aplicativo Varejista puxando a auditoria da bicicleta), não é sustentável obrigar o dispositivo móvel a baixar Gigabit de nós e validar todos os blocos brutos da cadeia da indústria do último ano.
+
+Para este desafio de "Verificação Final Leve", mapeamos na estrutura o uso direto do **Simple Payment Verification (SPV)** presente no protocolo original clássico (Bitcoin):
+1. **Light Nodes:** O nó do usuário final que fará a consulta no frontend opera buscando apenas passivamente os *Cabeçalhos de Bloco* (*Block Headers*), reduzindo a banda milhares de vezes.
+2. **Merkle Trees:** A implementação massiva preencheria o cabeçalho base da rede Kafka com a raiz do hash (*Merkle Root*) sumarizado. 
+3. **Comprovante Fracionado:** O cliente valida se o `product_id` fornecido existe apenas enviando os bytes do produto para a rede P2P e solicitando o seu *Merkle Path*. Ao receber o caminho reduzido, a prova criptográfica de origem é autenticada localmente sem jamais expor ou baixar os outros dados industriais paralelos em trânsito no mesmo bloco.
