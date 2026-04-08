@@ -6,9 +6,15 @@ __pycache__/
 .pytest_cache/
 .coverage
 htmlcov/
+.ruff_cache/
 
 .venv/
 venv/
+.env
+.env.*
+!.env.example
+node_modules/
+.vite/
 
 build/
 dist/
