@@ -1,0 +1,76 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color: #1c1b1b;
+  background-color: #fcf9f8;
+  font-family: "Inter", sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  background: linear-gradient(180deg, #fcf9f8 0%, #f8f5f4 100%);
+  color: #1c1b1b;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(114, 118, 135, 0.28);
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.glass-nav {
+  background: rgba(252, 249, 248, 0.82);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.app-shell {
+  background: linear-gradient(180deg, #fcf9f8 0%, #f7f3f2 100%);
+}
+
+.sidebar-shell {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.97) 0%, rgba(249, 246, 243, 0.98) 100%);
+  box-shadow: 18px 0 42px rgba(15, 23, 42, 0.06);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+.topbar-shell {
+  background: rgba(252, 249, 248, 0.9);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}

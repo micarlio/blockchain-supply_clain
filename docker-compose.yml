@@ -6,27 +6,121 @@ services:
       - "9092:9092"
     environment:
       KAFKA_NODE_ID: 1
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT'
-      # Configura duas portas: 29092 para os containers conversarem e 9092 para o seu Python acessar localmente
-      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092'
-      KAFKA_LISTENERS: 'PLAINTEXT://kafka:29092,CONTROLLER://kafka:29093,PLAINTEXT_HOST://0.0.0.0:9092'
-      KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
-      KAFKA_CONTROLLER_QUORUM_VOTERS: '1@kafka:29093'
-      KAFKA_PROCESS_ROLES: 'broker,controller'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT"
+      KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092"
+      KAFKA_LISTENERS: "PLAINTEXT://kafka:29092,CONTROLLER://kafka:29093,PLAINTEXT_HOST://0.0.0.0:9092"
+      KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@kafka:29093"
+      KAFKA_PROCESS_ROLES: "broker,controller"
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      CLUSTER_ID: 'MkU3OEVBNTcwNTJENDM2Qk'
+      CLUSTER_ID: "MkU3OEVBNTcwNTJENDM2Qk"
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-topics --bootstrap-server localhost:9092 --list >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 20s
 
   init-kafka:
     image: confluentinc/cp-kafka:7.5.0
-    container_name: kafka-init
     depends_on:
-      - kafka
-    # Script adaptado para os comandos da imagem Confluent
+      kafka:
+        condition: service_healthy
     command: >
       bash -c "
-        echo 'Aguardando o Kafka subir...' &&
-        sleep 15 &&
-        kafka-topics --create --topic supply-chain-events --bootstrap-server kafka:29092 --replication-factor 1 --partitions 1 --if-not-exists &&
-        kafka-topics --create --topic supply-chain-blocks --bootstrap-server kafka:29092 --replication-factor 1 --partitions 1 --if-not-exists &&
-        echo 'Tópicos criados com sucesso!'
+        kafka-topics --create --topic cadeia-suprimentos-eventos --bootstrap-server kafka:29092 --replication-factor 1 --partitions 1 --if-not-exists &&
+        kafka-topics --create --topic cadeia-suprimentos-blocos --bootstrap-server kafka:29092 --replication-factor 1 --partitions 1 --if-not-exists &&
+        echo 'Topicos Kafka criados com sucesso.'
       "
+
+  node-alpha:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: node-alpha
+    depends_on:
+      kafka:
+        condition: service_healthy
+      init-kafka:
+        condition: service_completed_successfully
+    command:
+      [
+        "python",
+        "-m",
+        "scripts.iniciar_no_kafka",
+        "node-alpha",
+        "--porta-api",
+        "8001",
+        "--broker-url",
+        "kafka:29092"
+      ]
+    ports:
+      - "8001:8001"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8001/estado', timeout=5)"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 20s
+
+  node-beta:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: node-beta
+    depends_on:
+      kafka:
+        condition: service_healthy
+      init-kafka:
+        condition: service_completed_successfully
+    command:
+      [
+        "python",
+        "-m",
+        "scripts.iniciar_no_kafka",
+        "node-beta",
+        "--porta-api",
+        "8002",
+        "--sem-mineracao-automatica",
+        "--broker-url",
+        "kafka:29092"
+      ]
+    ports:
+      - "8002:8002"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8002/estado', timeout=5)"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 20s
+
+  node-gamma:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: node-gamma
+    depends_on:
+      kafka:
+        condition: service_healthy
+      init-kafka:
+        condition: service_completed_successfully
+    command:
+      [
+        "python",
+        "-m",
+        "scripts.iniciar_no_kafka",
+        "node-gamma",
+        "--observador",
+        "--porta-api",
+        "8003",
+        "--broker-url",
+        "kafka:29092"
+      ]
+    ports:
+      - "8003:8003"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8003/estado', timeout=5)"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 20s
