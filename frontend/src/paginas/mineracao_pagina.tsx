@@ -205,7 +205,7 @@ export function MineracaoPagina() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <CabecalhoPagina
         titulo="Painel de Mineração"
         descricao="Acompanhe a operação manual de mineração, o contexto do próximo bloco e o resultado real do Proof of Work do nó ativo."

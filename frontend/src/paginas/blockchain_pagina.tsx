@@ -23,10 +23,14 @@ type ResumoFork = {
   indice: number
   indiceAncestral: number
   blocoAncestral: BlocoBlockchain
+  blocosAtivos: BlocoBlockchain[]
   blocosFork: BlocoBlockchain[]
+  blocosAtivosNoRamo: number
   blocosNoFork: number
   hashPonta: string
+  hashPontaAtiva: string
   trabalhoAcumulado: number
+  trabalhoAcumuladoAtivo: number
 }
 
 const ORDENACOES_VALIDAS: OrdenacaoTabela[] = [
@@ -76,9 +80,10 @@ function construirResumoForks(
       }
 
       const blocoAncestral = cadeiaCandidata[indiceDivergencia - 1]
+      const blocosAtivos = cadeiaAtiva.slice(indiceDivergencia)
       const blocosFork = cadeiaCandidata.slice(indiceDivergencia)
 
-      if (!blocoAncestral || blocosFork.length === 0) {
+      if (!blocoAncestral || blocosFork.length === 0 || blocosAtivos.length === 0) {
         return null
       }
 
@@ -87,10 +92,14 @@ function construirResumoForks(
         indice: indiceFork + 1,
         indiceAncestral: indiceDivergencia - 1,
         blocoAncestral,
+        blocosAtivos,
         blocosFork: blocosFork,
+        blocosAtivosNoRamo: blocosAtivos.length,
         blocosNoFork: blocosFork.length,
         hashPonta: blocosFork.at(-1)?.block_hash ?? "-",
+        hashPontaAtiva: blocosAtivos.at(-1)?.block_hash ?? "-",
         trabalhoAcumulado: calcularTrabalhoAcumulado(cadeiaCandidata),
+        trabalhoAcumuladoAtivo: calcularTrabalhoAcumulado(cadeiaAtiva),
       }
     })
     .filter((resumo): resumo is ResumoFork => resumo !== null)
@@ -238,7 +247,7 @@ export function BlockchainPagina() {
       <BlockchainSummaryCards cadeiaAtiva={cadeiaAtiva} />
 
       <CartaoPainel
-        titulo="Encadeamento da Blockclain"
+        titulo="Encadeamento da Blockchain"
         descricao={`Cadeia confirmada por ${noAtivo.nome}. Cada bloco aponta para o hash anterior.`}
         destaque={
           <div className="text-right text-xs text-on-surface-variant">

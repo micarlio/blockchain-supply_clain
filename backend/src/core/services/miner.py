@@ -53,7 +53,7 @@ class Miner:
             index=previous_block.index + 1,
             timestamp=timestamp or _timestamp_utc_atual(),
             previous_hash=previous_block.block_hash,
-            difficulty=self.config.difficulty,
+            difficulty=blockchain.obter_dificuldade_global_ativa(),
             nonce=0,
             event_count=0,
             data_hash="",
@@ -69,26 +69,54 @@ class Miner:
     ) -> Block | None:
         """Testa nonces ate encontrar um hash que respeite a dificuldade."""
 
+        quantidade_tentativas = None if limite_nonce is None else limite_nonce + 1
+        bloco_minerado, _ = self.tentar_minerar_bloco(
+            block,
+            nonce_inicial=0,
+            quantidade_tentativas=quantidade_tentativas,
+        )
+        return bloco_minerado
+
+    def tentar_minerar_bloco(
+        self,
+        block: Block,
+        *,
+        nonce_inicial: int = 0,
+        quantidade_tentativas: int | None = None,
+    ) -> tuple[Block | None, int]:
+        """Executa uma janela de tentativas sem mudar a regra global de PoW."""
+
         if not isinstance(block, Block):
-            return None
+            return None, nonce_inicial
 
         if block.difficulty < 0:
-            return None
+            return None, nonce_inicial
+
+        if not isinstance(nonce_inicial, int) or nonce_inicial < 0:
+            return None, 0
+
+        if quantidade_tentativas is not None and quantidade_tentativas <= 0:
+            return None, nonce_inicial
 
         block.event_count = len(block.events)
         block.data_hash = block.calcular_hash_dados()
 
-        nonce_atual = 0
-        while limite_nonce is None or nonce_atual <= limite_nonce:
+        nonce_atual = nonce_inicial
+        tentativas_executadas = 0
+        while (
+            quantidade_tentativas is None
+            or tentativas_executadas < quantidade_tentativas
+        ):
             block.nonce = nonce_atual
             block.block_hash = block.calcular_hash_bloco()
 
             if block.possui_pow_valido():
-                return block
+                return block, nonce_atual + 1
 
             nonce_atual += 1
+            tentativas_executadas += 1
 
-        return None
+        return None, nonce_atual
 
     def minerar_da_mempool(
         self,
@@ -151,6 +179,15 @@ class Miner:
 
         return eventos_selecionados
 
+    def selecionar_eventos_mineraveis(
+        self,
+        blockchain: "Blockchain",
+        mempool: "Mempool",
+    ) -> list[SupplyChainEvent]:
+        """Exposicao publica do lote mineravel usado no ciclo automatico."""
+
+        return self._selecionar_eventos_mineraveis(blockchain, mempool)
+
     def create_candidate_block(
         self,
         blockchain: "Blockchain",
@@ -165,6 +202,21 @@ class Miner:
         """Alias de compatibilidade para `minerar_bloco`."""
 
         return self.minerar_bloco(block, max_nonce)
+
+    def try_mine_block(
+        self,
+        block: Block,
+        *,
+        start_nonce: int = 0,
+        attempt_count: int | None = None,
+    ) -> tuple[Block | None, int]:
+        """Alias de compatibilidade para `tentar_minerar_bloco`."""
+
+        return self.tentar_minerar_bloco(
+            block,
+            nonce_inicial=start_nonce,
+            quantidade_tentativas=attempt_count,
+        )
 
     def mine_from_mempool(
         self,

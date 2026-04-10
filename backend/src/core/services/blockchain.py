@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from typing import Any, Callable
 
 from src.core.config import CoreConfig
 from src.core.models.block import Block
@@ -28,14 +29,56 @@ class Blockchain:
         config: CoreConfig | None = None,
         validator: Validator | None = None,
         consensus: Consensus | None = None,
+        ao_processar_bloco: Callable[[dict[str, Any]], None] | None = None,
     ) -> None:
         """Ao iniciar, o no sempre nasce com o mesmo gênesis."""
 
         self.config = config or CoreConfig()
         self.validator = validator or Validator(self.config)
         self.consensus = consensus or Consensus()
+        self.ao_processar_bloco = ao_processar_bloco
         self.chain: list[Block] = [self.criar_bloco_genesis()]
         self.cadeias_candidatas: list[list[Block]] = []
+        self.obter_dificuldade_global_ativa()
+
+    def _emitir_resultado_processamento(
+        self,
+        resultado: str,
+        *,
+        bloco: Block | None = None,
+        payload: dict[str, object] | None = None,
+    ) -> None:
+        """Notifica a camada de aplicação sobre o destino de um bloco."""
+
+        if self.ao_processar_bloco is None:
+            return
+
+        dados: dict[str, object] = {"resultado": resultado}
+        if bloco is not None:
+            dados.update(
+                {
+                    "block_index": bloco.index,
+                    "block_hash": bloco.block_hash,
+                    "previous_hash": bloco.previous_hash,
+                    "difficulty": bloco.difficulty,
+                    "miner_id": bloco.miner_id,
+                }
+            )
+        if payload is not None:
+            dados.update(
+                {
+                    "block_index": payload.get("index"),
+                    "block_hash": payload.get("block_hash"),
+                    "previous_hash": payload.get("previous_hash"),
+                    "difficulty": payload.get("difficulty"),
+                    "miner_id": payload.get("miner_id"),
+                }
+            )
+
+        try:
+            self.ao_processar_bloco(dados)
+        except Exception:
+            pass
 
     def criar_bloco_genesis(self) -> Block:
         """Cria o bloco base que todos os nos devem compartilhar."""
@@ -64,6 +107,28 @@ class Blockchain:
         """Retorna uma copia das ramificacoes guardadas localmente."""
 
         return deepcopy(self.cadeias_candidatas)
+
+    def obter_dificuldade_global_para_cadeia(self, chain: list[Block]) -> int:
+        """Resolve a dificuldade efetiva para a cadeia informada."""
+
+        return self.config.obter_dificuldade_global_para_cadeia(chain)
+
+    def obter_dificuldade_global_ativa(self) -> int:
+        """Atualiza e devolve a dificuldade efetiva da cadeia ativa."""
+
+        return self.config.sincronizar_dificuldade_global_ativa(self.chain)
+
+    def descartar_cadeias_candidatas(self) -> None:
+        """Limpa forks em memoria quando a regra global da rede muda."""
+
+        self.cadeias_candidatas = []
+
+    def reiniciar_estado(self) -> None:
+        """Restaura a cadeia local para o estado inicial em memoria."""
+
+        self.chain = [self.criar_bloco_genesis()]
+        self.cadeias_candidatas = []
+        self.obter_dificuldade_global_ativa()
 
     def adicionar_bloco(self, block: Block) -> bool:
         """Tenta encaixar o bloco na cadeia ativa ou em algum fork conhecido."""
@@ -103,6 +168,7 @@ class Blockchain:
         # Guardamos a cadeia antiga porque ela pode virar um fork valido.
         cadeia_antiga = self.copiar_cadeia()
         self.chain = deepcopy(candidate_chain)
+        self.obter_dificuldade_global_ativa()
         self._remover_cadeia_candidata(candidate_chain)
         self._registrar_cadeia_candidata(cadeia_antiga)
         return True
@@ -129,9 +195,16 @@ class Blockchain:
 
         block = bloco_de_dict(payload)
         if block is None:
+            self._emitir_resultado_processamento(
+                STATUS_PAYLOAD_INVALIDO, payload=payload
+            )
             return STATUS_PAYLOAD_INVALIDO
 
         if block.miner_id is not None and block.miner_id == self.config.node_id:
+            self._emitir_resultado_processamento(
+                STATUS_BLOCO_IGNORADO_PROPRIO_NO,
+                bloco=block,
+            )
             return STATUS_BLOCO_IGNORADO_PROPRIO_NO
 
         return self._processar_bloco(block)
@@ -142,6 +215,8 @@ class Blockchain:
         previous_block = self.obter_ultimo_bloco()
         if self._validar_bloco_em_cadeia(block, previous_block, self.chain):
             self.chain.append(deepcopy(block))
+            self.obter_dificuldade_global_ativa()
+            self._emitir_resultado_processamento(STATUS_BLOCO_ADICIONADO, bloco=block)
             return STATUS_BLOCO_ADICIONADO
 
         # Primeiro tentamos ver se o bloco continua algum fork que ja conhecemos.
@@ -149,7 +224,12 @@ class Blockchain:
         if cadeia_estendida is not None:
             self._registrar_cadeia_candidata(cadeia_estendida)
             if self.resolver_conflito(cadeia_estendida):
+                self._emitir_resultado_processamento(
+                    STATUS_CADEIA_REORGANIZADA,
+                    bloco=block,
+                )
                 return STATUS_CADEIA_REORGANIZADA
+            self._emitir_resultado_processamento(STATUS_BLOCO_FORK, bloco=block)
             return STATUS_BLOCO_FORK
 
         # Se nao continuar um fork conhecido, pode ser o comeco de uma nova ramificacao.
@@ -157,9 +237,15 @@ class Blockchain:
         if cadeia_fork is not None:
             self._registrar_cadeia_candidata(cadeia_fork)
             if self.resolver_conflito(cadeia_fork):
+                self._emitir_resultado_processamento(
+                    STATUS_CADEIA_REORGANIZADA,
+                    bloco=block,
+                )
                 return STATUS_CADEIA_REORGANIZADA
+            self._emitir_resultado_processamento(STATUS_BLOCO_FORK, bloco=block)
             return STATUS_BLOCO_FORK
 
+        self._emitir_resultado_processamento(STATUS_BLOCO_REJEITADO, bloco=block)
         return STATUS_BLOCO_REJEITADO
 
     def _tentar_estender_candidata_existente(self, block: Block) -> list[Block] | None:
@@ -234,6 +320,9 @@ class Blockchain:
         if not self.validator.validar_bloco(block, previous_block):
             return False
 
+        if block.difficulty != self.obter_dificuldade_global_para_cadeia(cadeia_base):
+            return False
+
         contexto_cadeia = self.validator.construir_contexto_cadeia(cadeia_base)
         if contexto_cadeia is None:
             return False
@@ -271,12 +360,18 @@ class Blockchain:
                 return
 
             # Se a nova cadeia for so uma continuacao da antiga, substituimos.
-            if len(candidate_chain) >= len(cadeia_existente) and candidate_chain[: len(cadeia_existente)] == cadeia_existente:
+            if (
+                len(candidate_chain) >= len(cadeia_existente)
+                and candidate_chain[: len(cadeia_existente)] == cadeia_existente
+            ):
                 self.cadeias_candidatas[index] = deepcopy(candidate_chain)
                 return
 
             # Se a antiga ja for uma versao maior da nova, nao faz sentido guardar de novo.
-            if len(cadeia_existente) > len(candidate_chain) and cadeia_existente[: len(candidate_chain)] == candidate_chain:
+            if (
+                len(cadeia_existente) > len(candidate_chain)
+                and cadeia_existente[: len(candidate_chain)] == candidate_chain
+            ):
                 return
 
         self.cadeias_candidatas.append(deepcopy(candidate_chain))
@@ -286,7 +381,9 @@ class Blockchain:
 
         tip_hash = candidate_chain[-1].block_hash
         self.cadeias_candidatas = [
-            cadeia for cadeia in self.cadeias_candidatas if cadeia[-1].block_hash != tip_hash
+            cadeia
+            for cadeia in self.cadeias_candidatas
+            if cadeia[-1].block_hash != tip_hash
         ]
 
     def create_genesis_block(self) -> Block:

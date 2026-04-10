@@ -32,6 +32,8 @@ Topologia padrao do projeto:
   no de controle manual, API em `http://127.0.0.1:8002`
 - `node-gamma`
   no observador, API em `http://127.0.0.1:8003`
+- `node-evil`
+  no malicioso de mineracao automatica acelerada, API em `http://127.0.0.1:8004`
 - `kafka`
   broker usado para propagar eventos e blocos entre os nos
 
@@ -47,7 +49,7 @@ Cada no mantem:
 - `backend/`
   blockchain, validacao de dominio, mineracao, Kafka, API HTTP, scripts, testes e docs tecnicas
 - `frontend/`
-  painel React que consome as APIs reais dos tres nos
+  painel React que consome as APIs reais dos quatro nos
 - `docs/`
   documentacao geral da entrega
 - `infra/`
@@ -72,6 +74,7 @@ Isso sobe:
 - `node-alpha`
 - `node-beta`
 - `node-gamma`
+- `node-evil`
 
 Para conferir o estado:
 
@@ -80,6 +83,7 @@ docker compose ps
 curl http://127.0.0.1:8001/estado
 curl http://127.0.0.1:8002/estado
 curl http://127.0.0.1:8003/estado
+curl http://127.0.0.1:8004/estado
 ```
 
 ### 2. Rodar o frontend
@@ -97,6 +101,13 @@ O painel abre em `http://localhost:5173` e, por padrao, consulta:
 - `http://localhost:8001`
 - `http://localhost:8002`
 - `http://localhost:8003`
+- `http://localhost:8004`
+
+## Dificuldade global e hash power simulado
+
+- a dificuldade do `Proof of Work` continua global e igual para toda a rede
+- todos os nos validam blocos com a mesma regra de PoW
+- o `node-evil` nao muda a validade do bloco; ele apenas recebe uma capacidade de mineracao simulada maior
 
 
 ## Componentes principais

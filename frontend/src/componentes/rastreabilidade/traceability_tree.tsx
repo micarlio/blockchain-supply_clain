@@ -109,11 +109,7 @@ function TreeNode({
           />
         ) : null}
 
-        {noCaminhoSelecionado && !selecionado ? (
-          <span className="absolute right-4 top-4 rounded-full bg-primary/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-primary">
-            caminho ativo
-          </span>
-        ) : null}
+
 
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
@@ -150,6 +146,12 @@ function TreeNode({
             <div className="rounded-full border border-slate-200/80 bg-white/90 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">
               {no.insumos.length} insumo{no.insumos.length === 1 ? "" : "s"}
             </div>
+
+            {noCaminhoSelecionado && !selecionado ? (
+              <span className="rounded-full bg-primary/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-primary">
+                caminho ativo
+              </span>
+            ) : null}
           </div>
         </div>
 
@@ -257,13 +259,7 @@ export function TraceabilityTree({
     return resultado
   }, [raiz])
 
-  const colapsadoEfetivo = useMemo(() => {
-    const proximo = new Set(colapsado)
-    for (const eventId of caminhoSelecionado) {
-      proximo.delete(eventId)
-    }
-    return proximo
-  }, [colapsado, caminhoSelecionado])
+  const colapsadoEfetivo = colapsado
 
   function alternarColapso(eventId: string) {
     setColapsado((atual) => {
@@ -282,7 +278,7 @@ export function TraceabilityTree({
   }
 
   function recolherInternos() {
-    setColapsado(new Set(nosComFilhos.filter((eventId) => eventId !== raiz.evento.event_id)))
+    setColapsado(new Set(nosComFilhos))
   }
 
   function renderizarNo(no: NoRastreabilidade, isRaiz = false) {

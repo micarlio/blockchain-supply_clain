@@ -21,6 +21,11 @@ const NOS_PADRAO: ConfiguracaoNo[] = [
     nome: "Node Gamma",
     url: import.meta.env.VITE_NODE_GAMMA_URL ?? "http://127.0.0.1:8003",
   },
+  {
+    id: "node-evil",
+    nome: "Node Evil",
+    url: import.meta.env.VITE_NODE_EVIL_URL ?? "http://127.0.0.1:8004",
+  },
 ]
 
 export function ProvedorNos({ children }: { children: React.ReactNode }) {

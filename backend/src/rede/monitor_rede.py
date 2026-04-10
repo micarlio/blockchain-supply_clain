@@ -5,13 +5,18 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from threading import RLock
-from typing import Any
+from typing import Any, Callable
 
 
 def _timestamp_utc_atual() -> str:
     """Retorna o horario atual em UTC no formato padrao do projeto."""
 
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    return (
+        datetime.now(timezone.utc)
+        .replace(microsecond=0)
+        .isoformat()
+        .replace("+00:00", "Z")
+    )
 
 
 @dataclass(slots=True)
@@ -43,9 +48,16 @@ class AtividadeRede:
 class MonitorRede:
     """Guarda o resumo local dos nos conhecidos e das atividades recentes."""
 
-    def __init__(self, node_id_local: str, papel_local: str) -> None:
+    def __init__(
+        self,
+        node_id_local: str,
+        papel_local: str,
+        *,
+        ao_registrar_atividade: Callable[[AtividadeRede], None] | None = None,
+    ) -> None:
         self.node_id_local = node_id_local
         self.papel_local = papel_local
+        self.ao_registrar_atividade = ao_registrar_atividade
         self._trava = RLock()
         self._atividades: list[AtividadeRede] = []
         self._nos_conhecidos: dict[str, dict[str, object]] = {}
@@ -81,11 +93,46 @@ class MonitorRede:
             self._atividades.append(atividade)
             self._atividades = self._atividades[-100:]
 
+        if self.ao_registrar_atividade is not None:
+            try:
+                self.ao_registrar_atividade(atividade)
+            except Exception:
+                pass
+
+    def definir_papel_local(self, papel_local: str) -> None:
+        """Atualiza o papel local exposto pelos resumos da rede."""
+
+        self.papel_local = papel_local
+        self.atualizar_no(
+            self.node_id_local,
+            papel=papel_local,
+            status="online",
+            ultimo_evento="configuracao_no_atualizada",
+        )
+
+    def reiniciar(
+        self, papel_local: str, *, ultimo_evento: str = "inicializacao"
+    ) -> None:
+        """Limpa atividades e nós conhecidos para um novo ciclo local."""
+
+        with self._trava:
+            self.papel_local = papel_local
+            self._atividades = []
+            self._nos_conhecidos = {}
+
+        self.atualizar_no(
+            self.node_id_local,
+            papel=papel_local,
+            status="online",
+            ultimo_evento=ultimo_evento,
+        )
+
     def atualizar_no(
         self,
         node_id: str,
         *,
         papel: str | None = None,
+        api_url: str | None = None,
         status: str | None = None,
         altura_cadeia: int | None = None,
         hash_ponta: str | None = None,
@@ -100,6 +147,7 @@ class MonitorRede:
                 {
                     "node_id": node_id,
                     "papel": "desconhecido",
+                    "api_url": None,
                     "status": "desconhecido",
                     "altura_cadeia": None,
                     "hash_ponta": None,
@@ -111,6 +159,8 @@ class MonitorRede:
 
             if papel is not None:
                 resumo["papel"] = papel
+            if api_url is not None:
+                resumo["api_url"] = api_url
             if status is not None:
                 resumo["status"] = status
             if altura_cadeia is not None:
@@ -137,7 +187,9 @@ class MonitorRede:
         """Lista os nos conhecidos pela aplicacao local."""
 
         with self._trava:
-            nos = sorted(self._nos_conhecidos.values(), key=lambda item: str(item["node_id"]))
+            nos = sorted(
+                self._nos_conhecidos.values(), key=lambda item: str(item["node_id"])
+            )
 
         return [dict(no) for no in nos]
 
@@ -145,7 +197,9 @@ class MonitorRede:
         """Deriva um resumo simples do estado atual da demonstracao."""
 
         atividades = self.listar_atividades(limite=50)
-        fork_detectado = any(atividade["tipo"] == "fork_detectado" for atividade in atividades)
+        fork_detectado = any(
+            atividade["tipo"] == "fork_detectado" for atividade in atividades
+        )
         reorganizacao_detectada = any(
             atividade["tipo"] == "cadeia_reorganizada" for atividade in atividades
         )
@@ -173,7 +227,6 @@ class MonitorRede:
             altura_cadeia=altura_cadeia,
             hash_ponta=hash_ponta,
             tamanho_mempool=tamanho_mempool,
-            ultimo_evento="consulta_rede",
         )
 
         return {
@@ -189,4 +242,3 @@ class MonitorRede:
             "atividade_recente": self.listar_atividades(),
             "demonstracao": self.obter_resumo_demonstracao(),
         }
-

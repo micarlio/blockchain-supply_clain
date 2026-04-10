@@ -205,6 +205,13 @@ export function RastreabilidadePagina() {
             />
           ) : rastreabilidade.isLoading ? (
             <CarregandoPainel mensagem="Reconstruindo a árvore recursiva de origem..." />
+          ) : rastreabilidade.isError ? (
+            <TraceabilityEmptyState
+              titulo="Consulta não pôde ser resolvida"
+              descricao={rastreabilidade.error.message}
+              exemplos={exemplosConsulta}
+              onSelecionarExemplo={consultarTermo}
+            />
           ) : arvore && metricas ? (
             <div className="space-y-5">
               <div className="rounded-[1.4rem] border border-primary/15 bg-primary/5 px-4 py-4 text-sm leading-7 text-slate-600">

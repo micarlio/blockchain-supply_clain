@@ -33,10 +33,14 @@ export type LinhaNoRede = {
   online: boolean
   ativo: boolean
   papel: string
+  perfilNo: string
   altura: number | null
   mempool: number | null
   hashPonta: string | null
   forks: number | null
+  dificuldadeGlobal: number | null
+  mineracaoAutomaticaAtiva: boolean
+  capacidadeMineracao: EstadoNo["capacidade_mineracao"] | null
   ultimoContato: string | null
   ultimoEvento: string | null
   ultimoBloco: BlocoBlockchain | null
@@ -141,6 +145,42 @@ export function rotuloUltimoEventoNo(evento?: string | null) {
   }
 
   return ROTULOS_ULTIMO_EVENTO[evento] ?? evento.replaceAll("_", " ")
+}
+
+export function rotuloPerfilNo(perfil?: string | null) {
+  if (!perfil) {
+    return "desconhecido"
+  }
+
+  if (perfil === "malicioso") {
+    return "malicioso"
+  }
+
+  if (perfil === "honesto") {
+    return "honesto"
+  }
+
+  return perfil.replaceAll("_", " ")
+}
+
+export function resumirCapacidadeMineracao(
+  capacidade?: EstadoNo["capacidade_mineracao"] | null,
+) {
+  if (!capacidade) {
+    return "sem configuração"
+  }
+
+  return `${capacidade.tentativas_nonce_por_ciclo.toLocaleString("pt-BR")} nonces/ciclo`
+}
+
+export function detalharCapacidadeMineracao(
+  capacidade?: EstadoNo["capacidade_mineracao"] | null,
+) {
+  if (!capacidade) {
+    return "capacidade não informada"
+  }
+
+  return `${capacidade.intervalo_ciclo_segundos}s por ciclo • perfil ${capacidade.perfil}`
 }
 
 export function tituloAtividade(tipo: string) {
@@ -355,10 +395,14 @@ export function derivarPainelCluster(entradas: EntradaNoCluster[], noAtivoId: st
       online: Boolean(entrada.estado),
       ativo: entrada.no.id === noAtivoId,
       papel: entrada.estado?.papel_no ?? entrada.rede?.papel_local ?? "desconhecido",
+      perfilNo: entrada.estado?.perfil_no ?? "desconhecido",
       altura,
       mempool: entrada.estado?.quantidade_mempool ?? entrada.rede?.estado_local.tamanho_mempool ?? null,
       hashPonta,
       forks: entrada.estado?.forks_conhecidos ?? entrada.rede?.estado_local.forks_conhecidos ?? null,
+      dificuldadeGlobal: entrada.estado?.dificuldade_global ?? null,
+      mineracaoAutomaticaAtiva: Boolean(entrada.estado?.mineracao_automatica_ativa),
+      capacidadeMineracao: entrada.estado?.capacidade_mineracao ?? null,
       ultimoContato: observacaoRecente?.ultimo_contato ?? null,
       ultimoEvento: observacaoRecente?.ultimo_evento ?? null,
       ultimoBloco,

@@ -1,4 +1,4 @@
-import { useMemo } from "react"
+import { useMemo, useState } from "react"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 
 import { useNos } from "../app/contexto_nos"
@@ -9,9 +9,32 @@ import { NetworkClusterSummary } from "../componentes/nos/network_cluster_summar
 import { NetworkComparisonTable } from "../componentes/nos/network_comparison_table"
 import { NetworkNodeCard } from "../componentes/nos/network_node_card"
 import { NodeActivityList } from "../componentes/nos/node_activity_list"
-import { useCadeiasNos, useEstadosNos, useRedesNos } from "../lib/api/servicos"
-import type { ConfiguracaoNo } from "../lib/api/tipos"
+import {
+  atualizarConfiguracaoNo,
+  useCadeiasNos,
+  useEstadosNos,
+  useRedesNos,
+} from "../lib/api/servicos"
+import { ErroApi } from "../lib/api/cliente"
+import type { ConfiguracaoNo, PayloadConfiguracaoNo } from "../lib/api/tipos"
 import { derivarPainelCluster } from "../lib/util/rede_cluster"
+
+type FeedbackConfiguracaoNo = {
+  tipo: "sucesso" | "erro"
+  mensagem: string
+}
+
+function mensagemErroConfiguracao(erro: unknown) {
+  if (erro instanceof ErroApi) {
+    return erro.message || "Falha ao aplicar a configuração no nó."
+  }
+
+  if (erro instanceof Error) {
+    return erro.message || "Falha ao aplicar a configuração no nó."
+  }
+
+  return "Falha ao aplicar a configuração no nó."
+}
 
 async function revalidarConsultasNo(clienteConsulta: ReturnType<typeof useQueryClient>, no: ConfiguracaoNo) {
   await Promise.all([
@@ -26,6 +49,9 @@ async function revalidarConsultasNo(clienteConsulta: ReturnType<typeof useQueryC
 export function NosPagina() {
   const { nos, noAtivo, definirNoAtivo } = useNos()
   const clienteConsulta = useQueryClient()
+  const [feedbackConfiguracaoPorNo, setFeedbackConfiguracaoPorNo] = useState<
+    Record<string, FeedbackConfiguracaoNo | undefined>
+  >({})
   const estados = useEstadosNos(nos)
   const redes = useRedesNos(nos)
   const cadeias = useCadeiasNos(nos)
@@ -53,6 +79,38 @@ export function NosPagina() {
     },
   })
 
+  const atualizacaoConfiguracao = useMutation({
+    mutationFn: async ({ no, payload }: { no: ConfiguracaoNo; payload: PayloadConfiguracaoNo }) => {
+      await atualizarConfiguracaoNo(no, payload)
+      await revalidarConsultasNo(clienteConsulta, no)
+      return no.id
+    },
+    onMutate: async ({ no }) => {
+      setFeedbackConfiguracaoPorNo((estadoAtual) => ({
+        ...estadoAtual,
+        [no.id]: undefined,
+      }))
+    },
+    onSuccess: (_resultado, { no }) => {
+      setFeedbackConfiguracaoPorNo((estadoAtual) => ({
+        ...estadoAtual,
+        [no.id]: {
+          tipo: "sucesso",
+          mensagem: "Configuração aplicada em memória com sucesso.",
+        },
+      }))
+    },
+    onError: (erro, { no }) => {
+      setFeedbackConfiguracaoPorNo((estadoAtual) => ({
+        ...estadoAtual,
+        [no.id]: {
+          tipo: "erro",
+          mensagem: mensagemErroConfiguracao(erro),
+        },
+      }))
+    },
+  })
+
   if (estados.every((consulta) => consulta.isLoading) && cadeias.every((consulta) => consulta.isLoading)) {
     return <CarregandoPainel mensagem="Montando o painel operacional do cluster distribuído..." />
   }
@@ -66,7 +124,7 @@ export function NosPagina() {
 
       <NetworkClusterSummary resumo={resumo} nos={nos} />
 
-      <section className="grid gap-4 xl:grid-cols-3">
+      <section className="grid gap-5 xl:grid-cols-2">
         {linhas.map((linha) => (
           <NetworkNodeCard
             key={linha.no.id}
@@ -75,6 +133,14 @@ export function NosPagina() {
             aoSelecionarNo={definirNoAtivo}
             aoAtualizar={(no) => atualizacao.mutate(no)}
             atualizando={atualizacao.isPending && atualizacao.variables?.id === linha.no.id}
+            aoSalvarConfiguracao={(no, payload) =>
+              atualizacaoConfiguracao.mutate({ no, payload })
+            }
+            salvandoConfiguracao={
+              atualizacaoConfiguracao.isPending
+              && atualizacaoConfiguracao.variables?.no.id === linha.no.id
+            }
+            feedbackConfiguracao={feedbackConfiguracaoPorNo[linha.no.id]}
           />
         ))}
       </section>
@@ -89,7 +155,7 @@ export function NosPagina() {
         limite={10}
       />
 
-      <section className="grid gap-4 xl:grid-cols-3">
+      <section className="grid gap-5 xl:grid-cols-2">
         {linhas.map((linha) => (
           <NodeActivityList key={`${linha.no.id}-atividades`} linha={linha} />
         ))}

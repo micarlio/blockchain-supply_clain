@@ -37,6 +37,26 @@ def _texto_preenchido(value: object) -> bool:
     return isinstance(value, str) and bool(value)
 
 
+def _lot_id_evento(event: SupplyChainEvent) -> str | None:
+    """Extrai o lot_id serializado quando ele existir no metadata."""
+
+    lot_id = event.metadata.get("lot_id") if isinstance(event.metadata, dict) else None
+    return lot_id if isinstance(lot_id, str) and bool(lot_id) else None
+
+
+def _identificadores_rastreabilidade_evento(event: SupplyChainEvent) -> dict[str, str]:
+    """Lista os identificadores que podem ser usados numa consulta de rastreabilidade."""
+
+    identificadores = {
+        "event_id": event.event_id,
+        "product_id": event.product_id,
+    }
+    lot_id = _lot_id_evento(event)
+    if lot_id is not None:
+        identificadores["lot_id"] = lot_id
+    return identificadores
+
+
 class Validator:
     """Ponto central de validação estrutural do core."""
 
@@ -58,40 +78,84 @@ class Validator:
     ) -> bool:
         """Aplica as regras mínimas de composição produtiva do projeto."""
 
+        return (
+            self.diagnosticar_rejeicao_evento_de_dominio(
+                event,
+                eventos_anteriores,
+                input_ids_consumidos,
+            )
+            is None
+        )
+
+    def diagnosticar_rejeicao_evento_de_dominio(
+        self,
+        event: SupplyChainEvent,
+        eventos_anteriores: dict[str, SupplyChainEvent] | None = None,
+        input_ids_consumidos: set[str] | None = None,
+    ) -> str | None:
+        """Retorna um motivo explicito quando a regra de dominio rejeita o evento."""
+
         if not self.validar_evento(event):
-            return False
+            return "estrutura_invalida"
 
         eventos_anteriores = eventos_anteriores or {}
         input_ids_consumidos = input_ids_consumidos or set()
 
         if event.event_id in eventos_anteriores:
-            return False
+            return "evento_duplicado"
+
+        if len(set(event.input_ids)) != len(event.input_ids):
+            return "input_ids_duplicados"
+
+        identificadores_novos = _identificadores_rastreabilidade_evento(event)
+        for evento_anterior in eventos_anteriores.values():
+            identificadores_anteriores = _identificadores_rastreabilidade_evento(
+                evento_anterior
+            )
+            for campo_novo, valor_novo in identificadores_novos.items():
+                for (
+                    campo_anterior,
+                    valor_anterior,
+                ) in identificadores_anteriores.items():
+                    if valor_novo != valor_anterior:
+                        continue
+                    if campo_novo == "product_id" and campo_anterior == "product_id":
+                        return "product_id_duplicado"
+                    if campo_novo == "lot_id" and campo_anterior == "lot_id":
+                        return "lot_id_duplicado"
+                    return "identificador_rastreabilidade_duplicado"
 
         if PAPEL_EXIGIDO_POR_EVENTO.get(event.event_type) != event.actor_role:
-            return False
+            return "papel_invalido_para_evento"
 
         if tipo_entidade_esperado_por_evento(event.event_type) != event.entity_kind:
-            return False
+            return "entidade_invalida_para_evento"
 
         if event.event_type == EVENTO_CADASTRAR_MATERIA_PRIMA:
-            return len(event.input_ids) == 0
+            return (
+                None if len(event.input_ids) == 0 else "materia_prima_nao_aceita_inputs"
+            )
 
         if not event.input_ids:
-            return False
+            return "input_ids_obrigatorios"
 
         eventos_referenciados: list[SupplyChainEvent] = []
         for input_id in event.input_ids:
             evento_anterior = eventos_anteriores.get(input_id)
             if evento_anterior is None:
-                return False
+                return "input_id_inexistente"
             if input_id in input_ids_consumidos:
-                return False
+                return "input_id_ja_consumido"
             eventos_referenciados.append(evento_anterior)
 
         tipos_referenciados = {evento.entity_kind for evento in eventos_referenciados}
 
         if event.event_type == EVENTO_FABRICAR_PRODUTO_SIMPLES:
-            return tipos_referenciados == {ENTIDADE_MATERIA_PRIMA}
+            return (
+                None
+                if tipos_referenciados == {ENTIDADE_MATERIA_PRIMA}
+                else "produto_simples_exige_materia_prima"
+            )
 
         if event.event_type == EVENTO_FABRICAR_PRODUTO_COMPOSTO:
             if not tipos_referenciados.issubset(
@@ -101,18 +165,22 @@ class Validator:
                     ENTIDADE_PRODUTO_COMPOSTO,
                 }
             ):
-                return False
+                return "produto_composto_referencia_tipo_invalido"
 
-            return bool(
-                tipos_referenciados.intersection(
-                    {
-                        ENTIDADE_PRODUTO_SIMPLES,
-                        ENTIDADE_PRODUTO_COMPOSTO,
-                    }
+            return (
+                None
+                if bool(
+                    tipos_referenciados.intersection(
+                        {
+                            ENTIDADE_PRODUTO_SIMPLES,
+                            ENTIDADE_PRODUTO_COMPOSTO,
+                        }
+                    )
                 )
+                else "produto_composto_exige_produto_derivado"
             )
 
-        return False
+        return "tipo_evento_desconhecido"
 
     def construir_contexto_eventos(
         self,
@@ -233,9 +301,6 @@ class Validator:
             return False
         if block.previous_hash != previous_block.block_hash:
             return False
-        if block.difficulty != self.config.difficulty:
-            return False
-
         return True
 
     def validar_cadeia(self, chain: list[Block]) -> bool:
@@ -247,6 +312,15 @@ class Validator:
         for index, block in enumerate(chain):
             previous_block = None if index == 0 else chain[index - 1]
             if not self.validar_bloco(block, previous_block):
+                return False
+
+            if index == 0:
+                continue
+
+            dificuldade_esperada = self.config.obter_dificuldade_global_para_cadeia(
+                chain[:index]
+            )
+            if block.difficulty != dificuldade_esperada:
                 return False
 
         return self.construir_contexto_cadeia(chain) is not None

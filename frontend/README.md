@@ -33,6 +33,7 @@ Antes de abrir o painel, o ideal é ter estes serviços em execução:
 2. `node-alpha` em `http://127.0.0.1:8001`
 3. `node-beta` em `http://127.0.0.1:8002`
 4. `node-gamma` em `http://127.0.0.1:8003`
+5. `node-evil` em `http://127.0.0.1:8004`
 
 O jeito mais simples de garantir isso hoje é:
 
@@ -68,6 +69,7 @@ Se quiser apontar para outras URLs, crie um `.env` local com:
 VITE_NODE_ALPHA_URL=http://127.0.0.1:8001
 VITE_NODE_BETA_URL=http://127.0.0.1:8002
 VITE_NODE_GAMMA_URL=http://127.0.0.1:8003
+VITE_NODE_EVIL_URL=http://127.0.0.1:8004
 ```
 
 ## Fluxo recomendado de uso
@@ -85,3 +87,4 @@ VITE_NODE_GAMMA_URL=http://127.0.0.1:8003
 
 - O frontend usa as APIs reais do projeto; ele não depende de mocks para o fluxo principal.
 - A lista de itens exibida no painel é derivada da cadeia, da mempool e das atividades observadas nos nós.
+- A UI agora tambem reconhece o `node-evil`, exibindo o papel do no, a dificuldade global compartilhada e a capacidade de mineracao simulada por no.

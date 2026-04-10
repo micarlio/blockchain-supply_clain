@@ -93,29 +93,37 @@ export function CartaoNoCluster({
 
       <div className="mt-5 grid grid-cols-4 gap-2 rounded-lg bg-slate-50/80 p-3">
         <div>
-          <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Altura</p>
+          <p className="text-[8px] font-bold uppercase tracking-[0.14em] text-slate-400" title="Altura">
+            Alt.
+          </p>
           <p className="mt-1 text-sm font-semibold tracking-tight text-slate-900">{altura}</p>
         </div>
         <div>
-          <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Mempool</p>
+          <p className="text-[8px] font-bold uppercase tracking-[0.14em] text-slate-400" title="Mempool">
+            Pool
+          </p>
           <div className="mt-1 flex items-center gap-1.5">
             <p className="text-sm font-semibold tracking-tight text-slate-900">{mempool}</p>
             {Number(mempool) > 0 && <span className="flex h-1.5 w-1.5 rounded-full bg-amber-400" />}
           </div>
         </div>
         <div>
-          <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Dificuldade</p>
+          <p className="text-[8px] font-bold uppercase tracking-[0.14em] text-slate-400" title="Dificuldade">
+            Dif.
+          </p>
           <p className="mt-1 text-sm font-semibold tracking-tight text-slate-900">{dificuldade}</p>
         </div>
         <div>
-          <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Forks</p>
+          <p className="text-[8px] font-bold uppercase tracking-[0.14em] text-slate-400" title="Forks">
+            Forks
+          </p>
           <p className="mt-1 text-sm font-semibold tracking-tight text-slate-900">{forks}</p>
         </div>
       </div>
 
       <div className="mt-3">
         <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Hash da ponta</p>
-        <p className="mt-1 break-all font-mono text-[10px] font-medium tracking-tight text-slate-600">
+        <p className="mt-1 break-all rounded-md bg-slate-100 px-2 py-1.5 font-mono text-[10px] font-medium tracking-tight text-slate-600">
           {hashPonta}
         </p>
       </div>

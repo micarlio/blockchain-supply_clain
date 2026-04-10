@@ -17,7 +17,11 @@ import httpx
 
 from src.core.models.block import Block
 from src.core.models.event import SupplyChainEvent
-from src.core.serialization.json_codec import bloco_de_dict, bloco_para_json, evento_para_json
+from src.core.serialization.json_codec import (
+    bloco_de_dict,
+    bloco_para_json,
+    evento_para_json,
+)
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -58,7 +62,9 @@ def porta_livre(host: str, porta: int) -> bool:
         return conexao.connect_ex((host, porta)) != 0
 
 
-def executar_comando(cmd: list[str], *, cwd: Path | None = None) -> subprocess.CompletedProcess[str]:
+def executar_comando(
+    cmd: list[str], *, cwd: Path | None = None
+) -> subprocess.CompletedProcess[str]:
     """Executa um comando simples e devolve o resultado."""
 
     return subprocess.run(
@@ -104,7 +110,10 @@ def esperar_kafka(timeout: int = 60) -> None:
         )
         if resultado.returncode == 0:
             topicos = resultado.stdout.splitlines()
-            if "cadeia-suprimentos-eventos" in topicos and "cadeia-suprimentos-blocos" in topicos:
+            if (
+                "cadeia-suprimentos-eventos" in topicos
+                and "cadeia-suprimentos-blocos" in topicos
+            ):
                 print("[Ambiente] Kafka pronto.")
                 return
 
@@ -252,7 +261,9 @@ def minerar(cliente: httpx.Client, url_api: str) -> dict[str, object]:
 
     resposta = cliente.post(f"{url_api.rstrip('/')}/demonstracao/minerar")
     dados = resposta.json()
-    print(f"[HTTP] POST /demonstracao/minerar em {url_api} -> {resposta.status_code} | {dados.get('status')}")
+    print(
+        f"[HTTP] POST /demonstracao/minerar em {url_api} -> {resposta.status_code} | {dados.get('status')}"
+    )
     return {"status_code": resposta.status_code, "body": dados}
 
 
@@ -280,7 +291,9 @@ def obter_demonstracao(cliente: httpx.Client, url_api: str) -> dict[str, object]
     return obter_json(cliente, f"{url_api.rstrip('/')}/demonstracao")
 
 
-def obter_rastreabilidade(cliente: httpx.Client, url_api: str, identificador: str) -> dict[str, object]:
+def obter_rastreabilidade(
+    cliente: httpx.Client, url_api: str, identificador: str
+) -> dict[str, object]:
     """Consulta a rastreabilidade de um item."""
 
     return obter_json(cliente, f"{url_api.rstrip('/')}/rastreabilidade/{identificador}")
@@ -325,7 +338,9 @@ def esperar_atividade(
 
     esperar_condicao_http(
         f"atividade {tipo} em {url_api}",
-        lambda: atividade_presente(url_api, tipo, event_id=event_id, hash_bloco=hash_bloco),
+        lambda: atividade_presente(
+            url_api, tipo, event_id=event_id, hash_bloco=hash_bloco
+        ),
         timeout=timeout,
     )
 
@@ -341,7 +356,9 @@ def esperar_altura(urls: dict[str, str], altura: int, timeout: int = 30) -> None
                     return False
         return True
 
-    esperar_condicao_http(f"altura {altura} em todos os nós", _condicao, timeout=timeout)
+    esperar_condicao_http(
+        f"altura {altura} em todos os nós", _condicao, timeout=timeout
+    )
 
 
 def esperar_mempool(urls: dict[str, str], quantidade: int, timeout: int = 30) -> None:
@@ -362,7 +379,9 @@ def esperar_mempool(urls: dict[str, str], quantidade: int, timeout: int = 30) ->
     )
 
 
-def imprimir_estado_nos(cliente: httpx.Client, urls: dict[str, str], titulo: str) -> None:
+def imprimir_estado_nos(
+    cliente: httpx.Client, urls: dict[str, str], titulo: str
+) -> None:
     """Mostra um resumo curto da cadeia e da mempool em cada nó."""
 
     print()
@@ -498,7 +517,9 @@ def validar_regras_do_dominio(eventos: dict[str, dict[str, object]]) -> None:
     print("[Domínio] Produto composto depende de produto simples + matéria-prima: OK")
 
 
-def validar_bloco_minerado(bloco: dict[str, object], previous_hash_esperado: str) -> Block:
+def validar_bloco_minerado(
+    bloco: dict[str, object], previous_hash_esperado: str
+) -> Block:
     """Valida explicitamente os pontos esperados do bloco minerado."""
 
     bloco_objeto = bloco_de_dict(bloco)
@@ -510,7 +531,9 @@ def validar_bloco_minerado(bloco: dict[str, object], previous_hash_esperado: str
 
     print("[Blockchain] previous_hash correto: OK")
     print("[Blockchain] Proof of Work válido: OK")
-    print(f"[Rede] Bloco serializado para JSON antes do envio: OK ({len(bloco_json)} bytes)")
+    print(
+        f"[Rede] Bloco serializado para JSON antes do envio: OK ({len(bloco_json)} bytes)"
+    )
     return bloco_objeto
 
 
@@ -532,14 +555,37 @@ def mostrar_logs_recentes(arquivos_log: dict[str, Path]) -> None:
 def criar_parser() -> argparse.ArgumentParser:
     """Monta os argumentos da simulação."""
 
-    parser = argparse.ArgumentParser(description="Executa uma simulação ponta a ponta da blockchain.")
-    parser.add_argument("--alpha", default="http://127.0.0.1:8001", help="URL da API do nó alpha.")
-    parser.add_argument("--beta", default="http://127.0.0.1:8002", help="URL da API do nó beta.")
-    parser.add_argument("--gamma", default="http://127.0.0.1:8003", help="URL da API do nó gamma.")
-    parser.add_argument("--broker-url", default="localhost:9092", help="Endereço do broker Kafka.")
-    parser.add_argument("--usar-ambiente-existente", action="store_true", help="Usa Kafka e nós já iniciados.")
-    parser.add_argument("--manter-ambiente", action="store_true", help="Não derruba Kafka e nós no final.")
-    parser.add_argument("--dificuldade", type=int, default=2, help="Dificuldade usada nos nós iniciados pelo script.")
+    parser = argparse.ArgumentParser(
+        description="Executa uma simulação ponta a ponta da blockchain."
+    )
+    parser.add_argument(
+        "--alpha", default="http://127.0.0.1:8001", help="URL da API do nó alpha."
+    )
+    parser.add_argument(
+        "--beta", default="http://127.0.0.1:8002", help="URL da API do nó beta."
+    )
+    parser.add_argument(
+        "--gamma", default="http://127.0.0.1:8003", help="URL da API do nó gamma."
+    )
+    parser.add_argument(
+        "--broker-url", default="localhost:9092", help="Endereço do broker Kafka."
+    )
+    parser.add_argument(
+        "--usar-ambiente-existente",
+        action="store_true",
+        help="Usa Kafka e nós já iniciados.",
+    )
+    parser.add_argument(
+        "--manter-ambiente",
+        action="store_true",
+        help="Não derruba Kafka e nós no final.",
+    )
+    parser.add_argument(
+        "--dificuldade",
+        type=int,
+        default=2,
+        help="Dificuldade usada nos nós iniciados pelo script.",
+    )
     parser.add_argument(
         "--max-eventos-por-bloco",
         type=int,
@@ -617,26 +663,38 @@ def main() -> None:
             assert evento_1_objeto is not None
             evento_1_json = evento_para_json(evento_1_objeto)
             print(f"[Rede] Evento serializado para JSON: {len(evento_1_json)} bytes")
-            resposta_1 = postar_evento(cliente, args.alpha, evento_1, propagar_rede=True)
+            resposta_1 = postar_evento(
+                cliente, args.alpha, evento_1, propagar_rede=True
+            )
             assert resposta_1["status_code"] == 200
             assert resposta_1["body"]["status"] == "evento_adicionado"
             esperar_mempool(urls, 1)
-            esperar_atividade(args.alpha, "evento_proprio_descartado", event_id="EVT-E2E-001")
+            esperar_atividade(
+                args.alpha, "evento_proprio_descartado", event_id="EVT-E2E-001"
+            )
             esperar_atividade(args.beta, "evento_recebido", event_id="EVT-E2E-001")
             esperar_atividade(args.gamma, "evento_recebido", event_id="EVT-E2E-001")
-            imprimir_estado_nos(cliente, urls, "Após o cadastro da matéria-prima principal")
+            imprimir_estado_nos(
+                cliente, urls, "Após o cadastro da matéria-prima principal"
+            )
 
             anunciar_etapa(2, "Cadastro da segunda matéria-prima")
             evento_2 = eventos["materia_prima_b"]
             imprimir_json("[Evento criado]", evento_2)
-            resposta_2 = postar_evento(cliente, args.alpha, evento_2, propagar_rede=True)
+            resposta_2 = postar_evento(
+                cliente, args.alpha, evento_2, propagar_rede=True
+            )
             assert resposta_2["status_code"] == 200
             assert resposta_2["body"]["status"] == "evento_adicionado"
             esperar_mempool(urls, 2)
-            esperar_atividade(args.alpha, "evento_proprio_descartado", event_id="EVT-E2E-002")
+            esperar_atividade(
+                args.alpha, "evento_proprio_descartado", event_id="EVT-E2E-002"
+            )
             esperar_atividade(args.beta, "evento_recebido", event_id="EVT-E2E-002")
             esperar_atividade(args.gamma, "evento_recebido", event_id="EVT-E2E-002")
-            imprimir_estado_nos(cliente, urls, "Após as duas matérias-primas entrarem na mempool")
+            imprimir_estado_nos(
+                cliente, urls, "Após as duas matérias-primas entrarem na mempool"
+            )
 
             anunciar_etapa(3, "Mineração do bloco de matérias-primas")
             cadeia_antes = obter_cadeia(cliente, args.alpha)
@@ -650,34 +708,56 @@ def main() -> None:
             assert bloco_1_objeto.event_count == 2
             esperar_altura(urls, 2)
             esperar_mempool(urls, 0)
-            esperar_atividade(args.alpha, "bloco_proprio_descartado", hash_bloco=bloco_1_objeto.block_hash)
-            esperar_atividade(args.beta, "bloco_recebido", hash_bloco=bloco_1_objeto.block_hash)
-            esperar_atividade(args.gamma, "bloco_recebido", hash_bloco=bloco_1_objeto.block_hash)
-            imprimir_estado_nos(cliente, urls, "Após propagação do bloco de matérias-primas")
+            esperar_atividade(
+                args.alpha,
+                "bloco_proprio_descartado",
+                hash_bloco=bloco_1_objeto.block_hash,
+            )
+            esperar_atividade(
+                args.beta, "bloco_recebido", hash_bloco=bloco_1_objeto.block_hash
+            )
+            esperar_atividade(
+                args.gamma, "bloco_recebido", hash_bloco=bloco_1_objeto.block_hash
+            )
+            imprimir_estado_nos(
+                cliente, urls, "Após propagação do bloco de matérias-primas"
+            )
 
             anunciar_etapa(4, "Fabricação do produto simples")
             evento_3 = eventos["produto_simples"]
             imprimir_json("[Evento criado]", evento_3)
-            resposta_3 = postar_evento(cliente, args.alpha, evento_3, propagar_rede=True)
+            resposta_3 = postar_evento(
+                cliente, args.alpha, evento_3, propagar_rede=True
+            )
             assert resposta_3["status_code"] == 200
             assert resposta_3["body"]["status"] == "evento_adicionado"
             esperar_mempool(urls, 1)
-            esperar_atividade(args.alpha, "evento_proprio_descartado", event_id="EVT-E2E-003")
+            esperar_atividade(
+                args.alpha, "evento_proprio_descartado", event_id="EVT-E2E-003"
+            )
             esperar_atividade(args.beta, "evento_recebido", event_id="EVT-E2E-003")
             esperar_atividade(args.gamma, "evento_recebido", event_id="EVT-E2E-003")
-            imprimir_estado_nos(cliente, urls, "Após o produto simples entrar na mempool")
+            imprimir_estado_nos(
+                cliente, urls, "Após o produto simples entrar na mempool"
+            )
 
             anunciar_etapa(5, "Fabricação do produto composto")
             evento_4 = eventos["produto_composto"]
             imprimir_json("[Evento criado]", evento_4)
-            resposta_4 = postar_evento(cliente, args.alpha, evento_4, propagar_rede=True)
+            resposta_4 = postar_evento(
+                cliente, args.alpha, evento_4, propagar_rede=True
+            )
             assert resposta_4["status_code"] == 200
             assert resposta_4["body"]["status"] == "evento_adicionado"
             esperar_mempool(urls, 2)
-            esperar_atividade(args.alpha, "evento_proprio_descartado", event_id="EVT-E2E-004")
+            esperar_atividade(
+                args.alpha, "evento_proprio_descartado", event_id="EVT-E2E-004"
+            )
             esperar_atividade(args.beta, "evento_recebido", event_id="EVT-E2E-004")
             esperar_atividade(args.gamma, "evento_recebido", event_id="EVT-E2E-004")
-            imprimir_estado_nos(cliente, urls, "Após o produto composto entrar na mempool")
+            imprimir_estado_nos(
+                cliente, urls, "Após o produto composto entrar na mempool"
+            )
 
             anunciar_etapa(6, "Mineração do bloco de composição")
             cadeia_antes = obter_cadeia(cliente, args.alpha)
@@ -691,32 +771,54 @@ def main() -> None:
             assert bloco_2_objeto.event_count == 2
             esperar_altura(urls, 3)
             esperar_mempool(urls, 0)
-            esperar_atividade(args.alpha, "bloco_proprio_descartado", hash_bloco=bloco_2_objeto.block_hash)
-            esperar_atividade(args.beta, "bloco_recebido", hash_bloco=bloco_2_objeto.block_hash)
-            esperar_atividade(args.gamma, "bloco_recebido", hash_bloco=bloco_2_objeto.block_hash)
+            esperar_atividade(
+                args.alpha,
+                "bloco_proprio_descartado",
+                hash_bloco=bloco_2_objeto.block_hash,
+            )
+            esperar_atividade(
+                args.beta, "bloco_recebido", hash_bloco=bloco_2_objeto.block_hash
+            )
+            esperar_atividade(
+                args.gamma, "bloco_recebido", hash_bloco=bloco_2_objeto.block_hash
+            )
             imprimir_estado_nos(cliente, urls, "Após propagação do bloco de composição")
 
             anunciar_etapa(7, "Consulta de rastreabilidade recursiva")
-            rastreabilidade = obter_rastreabilidade(cliente, args.gamma, "BICICLETA-E2E-01")
+            rastreabilidade = obter_rastreabilidade(
+                cliente, args.gamma, "BICICLETA-E2E-01"
+            )
             assert rastreabilidade["estado_atual"]["status"] == "confirmado"
             arvore = rastreabilidade["arvore_origem"]
             assert isinstance(arvore, dict)
             assert arvore["evento"]["event_id"] == "EVT-E2E-004"
             assert len(arvore["insumos"]) == 2
-            no_simples = next(item for item in arvore["insumos"] if item["evento"]["event_id"] == "EVT-E2E-003")
-            no_materia_prima_b = next(item for item in arvore["insumos"] if item["evento"]["event_id"] == "EVT-E2E-002")
+            no_simples = next(
+                item
+                for item in arvore["insumos"]
+                if item["evento"]["event_id"] == "EVT-E2E-003"
+            )
+            no_materia_prima_b = next(
+                item
+                for item in arvore["insumos"]
+                if item["evento"]["event_id"] == "EVT-E2E-002"
+            )
             assert no_simples["insumos"][0]["evento"]["event_id"] == "EVT-E2E-001"
-            assert no_materia_prima_b["evento"]["event_type"] == "CADASTRAR_MATERIA_PRIMA"
+            assert (
+                no_materia_prima_b["evento"]["event_type"] == "CADASTRAR_MATERIA_PRIMA"
+            )
             print("[Rastreabilidade] Árvore de origem do produto final:")
             imprimir_arvore_origem(arvore)
 
             anunciar_etapa(8, "Tentativa de conflito de consumo de insumo")
             evento_conflito = eventos["conflito_consumo"]
             imprimir_json("[Evento criado]", evento_conflito)
-            resposta_conflito = postar_evento(cliente, args.alpha, evento_conflito, propagar_rede=False)
+            resposta_conflito = postar_evento(
+                cliente, args.alpha, evento_conflito, propagar_rede=False
+            )
             assert resposta_conflito["status_code"] == 400
             assert resposta_conflito["body"]["status"] == "evento_rejeitado"
-            assert resposta_conflito["body"]["motivo"] == "evento_invalido_no_contexto_atual"
+            assert resposta_conflito["body"]["motivo"] == "input_id_ja_consumido"
             esperar_mempool(urls, 0)
             print("[Regra de consumo] Reutilização do mesmo input_id rejeitada: OK")
 
@@ -743,7 +845,9 @@ def main() -> None:
 
             print()
             print("[Resultado] Fluxo ponta a ponta concluído com sucesso.")
-            print("[Resultado] O sistema demonstrou domínio, mempool, mineração, rede, rastreabilidade e rejeição de conflito.")
+            print(
+                "[Resultado] O sistema demonstrou domínio, mempool, mineração, rede, rastreabilidade e rejeição de conflito."
+            )
             print("[Opcional] Para ver fork e reorganização, rode depois:")
             print(
                 "python -m scripts.simular_ataque_gasto_duplo "

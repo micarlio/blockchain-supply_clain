@@ -5,6 +5,7 @@ import {
   ChevronRight,
   FlaskConical,
   GitBranch,
+  Bug,
   Layers3,
   LayoutDashboard,
   Network,
@@ -38,6 +39,10 @@ const secoes = [
       { para: "/testes", rotulo: "Testes", icone: FlaskConical },
       { para: "/nos", rotulo: "Nós da rede", icone: Network },
     ],
+  },
+  {
+    titulo: "Depuração",
+    itens: [{ para: "/logs", rotulo: "Logs & Depuração", icone: Bug }],
   },
 ]
 

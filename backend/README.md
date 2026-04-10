@@ -69,6 +69,7 @@ Isso sobe:
 - `node-alpha` como minerador automatico
 - `node-beta` como no de controle manual
 - `node-gamma`
+- `node-evil` como minerador malicioso com hash power simulado maior
 
 Para acompanhar o estado:
 
@@ -120,6 +121,13 @@ O painel abre normalmente em `http://localhost:5173` e consulta, por padrão:
 - `http://127.0.0.1:8001`
 - `http://127.0.0.1:8002`
 - `http://127.0.0.1:8003`
+- `http://127.0.0.1:8004`
+
+## PoW global e capacidade por no
+
+- a dificuldade do `Proof of Work` continua global para toda a rede
+- todos os nos mineram e validam com a mesma dificuldade
+- a diferenca do `node-evil` fica apenas na capacidade de mineracao simulada por ciclo, para representar maior hash power sem mudar a validade do bloco
 
 Se quiser trocar os endereços, use:
 

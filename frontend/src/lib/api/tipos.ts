@@ -36,7 +36,16 @@ export interface BlocoBlockchain {
 export interface EstadoNo {
   node_id: string
   papel_no: string
+  perfil_no: string
+  mineracao_automatica_ativa: boolean
+  modo_observador: boolean
   difficulty: number
+  dificuldade_global: number
+  capacidade_mineracao: {
+    perfil: string
+    intervalo_ciclo_segundos: number
+    tentativas_nonce_por_ciclo: number
+  }
   altura_cadeia: number
   hash_ponta: string
   quantidade_mempool: number
@@ -145,6 +154,110 @@ export interface RespostaMineracao {
   status: string
   motivo?: string
   bloco?: BlocoBlockchain
+}
+
+export type PapelNo = "minerador" | "controle" | "observador"
+
+export interface PayloadConfiguracaoNo {
+  papel_no: PapelNo
+  intervalo_ciclo_segundos: number
+  tentativas_nonce_por_ciclo: number
+  perfil_mineracao?: string
+}
+
+export interface PayloadConfiguracaoRede {
+  dificuldade_global: number
+}
+
+export interface RespostaConfiguracao {
+  status: string
+  estado: EstadoNo
+  motivo?: string
+}
+
+export type NivelLogSistema = "INFO" | "WARN" | "ERROR" | "DEBUG"
+
+export interface LogSistema {
+  id: string
+  timestamp: string
+  level: NivelLogSistema | string
+  node_id: string
+  category: string
+  message: string
+  event_type?: string | null
+  endpoint?: string | null
+  method?: string | null
+  request_id?: string | null
+  status_code?: number | null
+  duration_ms?: number | null
+  request_payload?: unknown
+  response_payload?: unknown
+  context?: Record<string, unknown> | null
+}
+
+export interface LogsResposta {
+  node_id: string
+  transport: string
+  updated_at: string
+  entries: LogSistema[]
+}
+
+export interface OpcaoCampoTeste {
+  value: string
+  label: string
+  description?: string | null
+}
+
+export interface CampoEntradaTeste {
+  id: string
+  label: string
+  field_type: string
+  required: boolean
+  placeholder?: string | null
+  help_text?: string | null
+  default_value?: unknown
+  options: OpcaoCampoTeste[]
+}
+
+export interface DefinicaoCenarioTeste {
+  id: string
+  nome: string
+  descricao: string
+  categoria: string
+  severidade: string
+  objetivo: string
+  precondicoes: string[]
+  comportamento_esperado: string[]
+  impactos_execucao: string[]
+  requires_node_selection: boolean
+  node_selection_label?: string | null
+  node_selection_help?: string | null
+  input_fields: CampoEntradaTeste[]
+  show_blockchain_impact: boolean
+  show_request_response: boolean
+  show_context: boolean
+  default_target_node_id?: string | null
+  tags: string[]
+}
+
+export interface PayloadExecucaoTeste {
+  node_id?: string
+  parametros?: Record<string, unknown>
+}
+
+export interface ResultadoExecucaoTeste {
+  scenario_id: string
+  scenario_name: string
+  status_execucao: string
+  teste_aprovado: boolean
+  resultado_esperado: string
+  resultado_observado: string
+  mensagem_interpretada: string
+  request_enviada: Array<Record<string, unknown>>
+  response_recebida: Array<Record<string, unknown>>
+  impacto_blockchain: Record<string, unknown> | null
+  contexto_relevante: Record<string, unknown>
+  erro_tecnico?: Record<string, unknown> | null
 }
 
 export interface ConfiguracaoNo {

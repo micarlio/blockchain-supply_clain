@@ -41,15 +41,15 @@ export function DetalhesBloco({ bloco }: { bloco?: BlocoBlockchain }) {
       <div className="grid gap-4">
         <div className="rounded-xl bg-slate-950 p-4 text-slate-100">
           <p className="text-xs uppercase tracking-[0.16em] text-slate-400">previous_hash</p>
-          <p className="mt-2 font-mono text-sm">{bloco.previous_hash}</p>
+          <p className="mt-2 break-all font-mono text-sm">{bloco.previous_hash}</p>
         </div>
         <div className="rounded-xl bg-slate-950 p-4 text-slate-100">
           <p className="text-xs uppercase tracking-[0.16em] text-slate-400">data_hash</p>
-          <p className="mt-2 font-mono text-sm">{bloco.data_hash}</p>
+          <p className="mt-2 break-all font-mono text-sm">{bloco.data_hash}</p>
         </div>
         <div className="rounded-xl bg-slate-950 p-4 text-slate-100">
           <p className="text-xs uppercase tracking-[0.16em] text-slate-400">block_hash</p>
-          <p className="mt-2 font-mono text-sm">{bloco.block_hash}</p>
+          <p className="mt-2 break-all font-mono text-sm">{bloco.block_hash}</p>
         </div>
       </div>
 

@@ -4,12 +4,19 @@ import { requisitarJson } from "./cliente"
 import type {
   CadeiaResposta,
   ConfiguracaoNo,
+  DefinicaoCenarioTeste,
   DemonstracaoResposta,
   EstadoNo,
+  PayloadExecucaoTeste,
+  PayloadConfiguracaoNo,
+  PayloadConfiguracaoRede,
   EventoBlockchain,
+  LogsResposta,
   MempoolResposta,
+  ResultadoExecucaoTeste,
   RastreabilidadeResposta,
   RedeResposta,
+  RespostaConfiguracao,
   RespostaEvento,
   RespostaMineracao,
 } from "./tipos"
@@ -32,6 +39,10 @@ export function consultarRedeNo(no: ConfiguracaoNo): Promise<RedeResposta> {
 
 export function consultarDemonstracaoNo(no: ConfiguracaoNo): Promise<DemonstracaoResposta> {
   return requisitarJson<DemonstracaoResposta>(no.url, "/demonstracao")
+}
+
+export function consultarLogsNo(no: ConfiguracaoNo, limite = 250): Promise<LogsResposta> {
+  return requisitarJson<LogsResposta>(no.url, `/logs?limite=${limite}`)
 }
 
 export function consultarRastreabilidade(
@@ -75,6 +86,61 @@ export function minerarNo(no: ConfiguracaoNo): Promise<RespostaMineracao> {
   })
 }
 
+export function atualizarConfiguracaoNo(
+  no: ConfiguracaoNo,
+  payload: PayloadConfiguracaoNo,
+): Promise<RespostaConfiguracao> {
+  return requisitarJson<RespostaConfiguracao>(no.url, "/configuracao/no", {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  })
+}
+
+export function atualizarConfiguracaoRedeNo(
+  no: ConfiguracaoNo,
+  payload: PayloadConfiguracaoRede,
+): Promise<RespostaConfiguracao> {
+  return requisitarJson<RespostaConfiguracao>(no.url, "/configuracao/rede", {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  })
+}
+
+export function limparMemoriaNo(no: ConfiguracaoNo): Promise<RespostaConfiguracao> {
+  return requisitarJson<RespostaConfiguracao>(no.url, "/memoria/limpar", {
+    method: "POST",
+  })
+}
+
+export function consultarCenariosTeste(no: ConfiguracaoNo): Promise<DefinicaoCenarioTeste[]> {
+  return requisitarJson<DefinicaoCenarioTeste[]>(no.url, "/testes/cenarios")
+}
+
+export function consultarCenarioTeste(
+  no: ConfiguracaoNo,
+  scenarioId: string,
+): Promise<DefinicaoCenarioTeste> {
+  return requisitarJson<DefinicaoCenarioTeste>(
+    no.url,
+    `/testes/cenarios/${encodeURIComponent(scenarioId)}`,
+  )
+}
+
+export function executarCenarioTeste(
+  no: ConfiguracaoNo,
+  scenarioId: string,
+  payload: PayloadExecucaoTeste,
+): Promise<ResultadoExecucaoTeste> {
+  return requisitarJson<ResultadoExecucaoTeste>(
+    no.url,
+    `/testes/executar/${encodeURIComponent(scenarioId)}`,
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    },
+  )
+}
+
 export function useEstadoNo(no: ConfiguracaoNo) {
   return useQuery({
     queryKey: ["estado-no", no.id, no.url],
@@ -112,6 +178,43 @@ export function useDemonstracaoNo(no: ConfiguracaoNo) {
     queryKey: ["demonstracao-no", no.id, no.url],
     queryFn: () => consultarDemonstracaoNo(no),
     refetchInterval: 4_000,
+  })
+}
+
+export function useLogsNos(
+  nos: ConfiguracaoNo[],
+  {
+    limite = 250,
+    refetchInterval = 2_500,
+  }: {
+    limite?: number
+    refetchInterval?: number | false
+  } = {},
+) {
+  return useQueries({
+    queries: nos.map((no) => ({
+      queryKey: ["logs-no", no.id, no.url, limite],
+      queryFn: () => consultarLogsNo(no, limite),
+      refetchInterval,
+      staleTime: 0,
+    })),
+  })
+}
+
+export function useCenariosTeste(no: ConfiguracaoNo) {
+  return useQuery({
+    queryKey: ["testes-cenarios", no.id, no.url],
+    queryFn: () => consultarCenariosTeste(no),
+    staleTime: 10_000,
+  })
+}
+
+export function useCenarioTeste(no: ConfiguracaoNo, scenarioId: string) {
+  return useQuery({
+    queryKey: ["testes-cenario", no.id, no.url, scenarioId],
+    queryFn: () => consultarCenarioTeste(no, scenarioId),
+    enabled: scenarioId.trim().length > 0,
+    staleTime: 10_000,
   })
 }
 

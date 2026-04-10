@@ -79,6 +79,11 @@ class Mempool:
 
         return list(self._eventos_por_id.keys())
 
+    def limpar(self) -> None:
+        """Descarta todos os eventos pendentes guardados em memoria."""
+
+        self._eventos_por_id = {}
+
     def add_event(self, event: SupplyChainEvent) -> bool:
         """Alias de compatibilidade para `adicionar_evento`."""
 

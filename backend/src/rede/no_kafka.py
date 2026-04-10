@@ -6,7 +6,7 @@ import json
 import time
 from contextlib import nullcontext
 from threading import RLock
-from typing import Callable
+from typing import TYPE_CHECKING, Callable
 
 from confluent_kafka import Consumer, Producer
 
@@ -25,8 +25,12 @@ from src.core.serialization.json_codec import (
 )
 from src.rede.monitor_rede import MonitorRede
 
+if TYPE_CHECKING:
+    from src.core.services.logs_memoria import ColetorLogsMemoria
+
 TOPICO_BLOCOS = "cadeia-suprimentos-blocos"
 TOPICO_EVENTOS = "cadeia-suprimentos-eventos"
+TIPO_MENSAGEM_CONFIGURACAO_REDE = "configuracao_rede"
 
 
 def _cabecalhos_com_origem(node_id: str) -> list[tuple[str, str]]:
@@ -71,6 +75,7 @@ class NoProdutor:
         *,
         trava: RLock | None = None,
         monitor_rede: MonitorRede | None = None,
+        coletor_logs: "ColetorLogsMemoria | None" = None,
     ):
         self.node_id = node_id
         self.blockchain = blockchain
@@ -81,14 +86,124 @@ class NoProdutor:
         self.minerador = Miner(config=self.blockchain.config)
         self.trava = trava
         self.monitor_rede = monitor_rede
+        self.coletor_logs = coletor_logs
         self._encerrado = False
+        self._bloco_candidato_automatico = None
+        self._event_ids_candidato_automatico: tuple[str, ...] = ()
+        self._hash_ponta_candidato_automatico: str | None = None
+        self._proximo_nonce_candidato_automatico = 0
 
     def iniciar_ciclo_mineracao(self):
         """Loop simples de mineração em background."""
 
-        while True:
-            self.minerar_uma_vez()
-            time.sleep(2)
+        while not self._encerrado:
+            self.executar_ciclo_mineracao_automatica()
+            time.sleep(self.blockchain.config.mining_cycle_interval_seconds)
+
+    def _resetar_mineracao_automatica(self) -> None:
+        """Limpa o candidato atual quando o contexto local muda."""
+
+        self._bloco_candidato_automatico = None
+        self._event_ids_candidato_automatico = ()
+        self._hash_ponta_candidato_automatico = None
+        self._proximo_nonce_candidato_automatico = 0
+
+    def _candidato_automatico_ainda_valido(self) -> bool:
+        """Mantem o mesmo trabalho apenas enquanto a ponta e a mempool batem."""
+
+        if self._bloco_candidato_automatico is None:
+            return False
+
+        if (
+            self.blockchain.obter_ultimo_bloco().block_hash
+            != self._hash_ponta_candidato_automatico
+        ):
+            return False
+
+        return all(
+            self.mempool.contem_evento(event_id)
+            for event_id in self._event_ids_candidato_automatico
+        )
+
+    def _obter_ou_criar_candidato_automatico(self):
+        """Prepara um candidato persistente para simular hash power por ciclo."""
+
+        if self._candidato_automatico_ainda_valido():
+            return self._bloco_candidato_automatico
+
+        self._resetar_mineracao_automatica()
+        eventos = self.minerador.selecionar_eventos_mineraveis(
+            self.blockchain, self.mempool
+        )
+        if not eventos:
+            return None
+
+        bloco_candidato = self.minerador.criar_bloco_candidato(self.blockchain, eventos)
+        if bloco_candidato is None:
+            return None
+
+        self._bloco_candidato_automatico = bloco_candidato
+        self._event_ids_candidato_automatico = tuple(
+            event.event_id for event in eventos
+        )
+        self._hash_ponta_candidato_automatico = (
+            self.blockchain.obter_ultimo_bloco().block_hash
+        )
+        self._proximo_nonce_candidato_automatico = 0
+        return bloco_candidato
+
+    def executar_ciclo_mineracao_automatica(self):
+        """Simula hash power tentando lotes de nonces sem alterar o PoW global."""
+
+        contexto = self.trava if self.trava is not None else nullcontext()
+        with contexto:
+            if (
+                self.blockchain.config.observer_mode
+                or not self.blockchain.config.auto_mining_enabled
+            ):
+                self._resetar_mineracao_automatica()
+                return None
+
+            if len(self.mempool) == 0:
+                self._resetar_mineracao_automatica()
+                return None
+
+            bloco_candidato = self._obter_ou_criar_candidato_automatico()
+            if bloco_candidato is None:
+                return None
+
+            bloco_minerado, proximo_nonce = self.minerador.tentar_minerar_bloco(
+                bloco_candidato,
+                nonce_inicial=self._proximo_nonce_candidato_automatico,
+                quantidade_tentativas=self.blockchain.config.nonce_attempts_per_cycle,
+            )
+            self._proximo_nonce_candidato_automatico = proximo_nonce
+            if bloco_minerado is None:
+                return None
+
+            if not self.blockchain.adicionar_bloco(bloco_minerado):
+                self._resetar_mineracao_automatica()
+                return None
+
+            self.mempool.remover_eventos(list(self._event_ids_candidato_automatico))
+            self._resetar_mineracao_automatica()
+
+        bloco_minerado.miner_id = self.node_id
+        print(
+            f"[Minerador] Bloco #{bloco_minerado.index} minerado por {self.node_id}. Publicando na rede..."
+        )
+        self.publicar_bloco(bloco_minerado)
+
+        if self.monitor_rede is not None:
+            self.monitor_rede.registrar_atividade(
+                "bloco_minerado",
+                f"Bloco #{bloco_minerado.index} minerado por {self.node_id}.",
+                "success",
+                self.node_id,
+                hash_relacionado=bloco_minerado.block_hash,
+            )
+
+        return bloco_minerado
 
     def _publicar_payload_json(self, topico: str, payload_json: str) -> None:
         """Enfileira a mensagem no Kafka sem bloquear a thread chamadora."""
@@ -101,17 +216,32 @@ class NoProdutor:
         )
         self.produtor.poll(0)
 
+        if self.coletor_logs is not None:
+            self.coletor_logs.registrar(
+                level="DEBUG",
+                category="rede_kafka",
+                message=f"Payload publicado no topico {topico}.",
+                event_type="mensagem_publicada",
+                context={
+                    "topico": topico,
+                    "tamanho_bytes": len(payload_json.encode("utf-8")),
+                },
+            )
+
     def minerar_uma_vez(self):
         """Executa uma rodada de mineração e publica o bloco achado."""
 
         contexto = self.trava if self.trava is not None else nullcontext()
         with contexto:
             if len(self.mempool) == 0:
+                self._resetar_mineracao_automatica()
                 return None
 
             bloco = self.minerador.minerar_da_mempool(self.blockchain, self.mempool)
             if bloco is None:
                 return None
+
+            self._resetar_mineracao_automatica()
 
         bloco.miner_id = self.node_id
         print(
@@ -142,19 +272,36 @@ class NoProdutor:
         evento_json = evento_para_json(evento)
         self._publicar_payload_json(self.topico_eventos, evento_json)
 
+    def publicar_configuracao_rede(self, payload: dict[str, object]) -> None:
+        """Publica uma configuracao global ordenada junto com os blocos."""
+
+        payload_json = json.dumps(payload, ensure_ascii=True)
+        self._publicar_payload_json(self.topico_blocos, payload_json)
+
     def encerrar(self, timeout: float = 5.0) -> None:
         """Drena mensagens pendentes antes de desligar o processo."""
 
         if self._encerrado:
             return
 
-        self.produtor.flush(timeout)
         self._encerrado = True
+        self._resetar_mineracao_automatica()
+        self.produtor.flush(timeout)
 
     def start_mining_loop(self):
         """Alias de compatibilidade para `iniciar_ciclo_mineracao`."""
 
         self.iniciar_ciclo_mineracao()
+
+    def run_automatic_mining_cycle(self):
+        """Alias de compatibilidade para `executar_ciclo_mineracao_automatica`."""
+
+        return self.executar_ciclo_mineracao_automatica()
+
+    def reset_automatic_mining_state(self) -> None:
+        """Alias publico para limpar o estado incremental da mineracao."""
+
+        self._resetar_mineracao_automatica()
 
     def mine_once(self):
         """Alias de compatibilidade para `minerar_uma_vez`."""
@@ -170,6 +317,11 @@ class NoProdutor:
         """Alias de compatibilidade para `publicar_evento`."""
 
         self.publicar_evento(event)
+
+    def publish_network_config(self, payload: dict[str, object]) -> None:
+        """Alias de compatibilidade para `publicar_configuracao_rede`."""
+
+        self.publicar_configuracao_rede(payload)
 
     def close(self, timeout: float = 5.0) -> None:
         """Alias de compatibilidade para `encerrar`."""
@@ -190,6 +342,9 @@ class NoConsumidor:
         trava: RLock | None = None,
         monitor_rede: MonitorRede | None = None,
         aceitar_evento: Callable | None = None,
+        aceitar_configuracao_rede: Callable | None = None,
+        sincronizar_cadeia_remota: Callable[[str], bool] | None = None,
+        coletor_logs: "ColetorLogsMemoria | None" = None,
     ):
         self.node_id = node_id
         self.blockchain = blockchain
@@ -197,6 +352,9 @@ class NoConsumidor:
         self.trava = trava
         self.monitor_rede = monitor_rede
         self.aceitar_evento = aceitar_evento
+        self.aceitar_configuracao_rede = aceitar_configuracao_rede
+        self.sincronizar_cadeia_remota = sincronizar_cadeia_remota
+        self.coletor_logs = coletor_logs
         self.consumidor = Consumer(
             {
                 "bootstrap.servers": url_broker,
@@ -223,6 +381,17 @@ class NoConsumidor:
                 try:
                     dados = json.loads(payload)
                 except json.JSONDecodeError:
+                    if self.coletor_logs is not None:
+                        self.coletor_logs.registrar(
+                            level="ERROR",
+                            category="rede_kafka",
+                            message=f"Payload invalido recebido no topico {topico}.",
+                            event_type="json_invalido",
+                            context={
+                                "topico": topico,
+                                "payload_preview": payload[:200],
+                            },
+                        )
                     print(
                         f"[Alerta JSON] Recebi algo no tópico '{topico}' mas não era JSON válido."
                     )
@@ -230,6 +399,10 @@ class NoConsumidor:
                     continue
 
                 if topico == TOPICO_BLOCOS:
+                    if dados.get("tipo_mensagem") == TIPO_MENSAGEM_CONFIGURACAO_REDE:
+                        self._processar_configuracao_rede(dados, origem_no)
+                        continue
+
                     self._processar_bloco_recebido(dados, origem_no)
                     continue
 
@@ -262,6 +435,18 @@ class NoConsumidor:
             return
 
         print(f"[Rede] Recebido bloco de '{remetente}'. Repassando ao núcleo.")
+        if self.coletor_logs is not None:
+            self.coletor_logs.registrar(
+                level="INFO",
+                category="rede_kafka",
+                message=f"Bloco recebido de {remetente} via Kafka.",
+                event_type="bloco_recebido_rede",
+                context={
+                    "remetente": remetente,
+                    "block_hash": dados.get("block_hash"),
+                    "block_index": dados.get("index"),
+                },
+            )
         contexto = self.trava if self.trava is not None else nullcontext()
         with contexto:
             resultado = self.blockchain.processar_bloco_recebido(dados)
@@ -279,6 +464,13 @@ class NoConsumidor:
                     print(
                         f"[Mempool] Eventos confirmados removidos da fila: {ids_eventos}"
                     )
+
+        if (
+            resultado == STATUS_BLOCO_REJEITADO
+            and isinstance(remetente, str)
+            and self.sincronizar_cadeia_remota is not None
+        ):
+            self.sincronizar_cadeia_remota(remetente)
 
         print(f"[Núcleo] Resultado do bloco de '{remetente}': {resultado}")
 
@@ -330,6 +522,14 @@ class NoConsumidor:
 
         evento = evento_de_json(payload)
         if evento is None:
+            if self.coletor_logs is not None:
+                self.coletor_logs.registrar(
+                    level="ERROR",
+                    category="rede_kafka",
+                    message="Evento recebido da rede nao pode ser desserializado.",
+                    event_type="evento_rede_invalido",
+                    context={"remetente": remetente, "payload_preview": payload[:200]},
+                )
             return
 
         contexto = self.trava if self.trava is not None else nullcontext()
@@ -340,6 +540,21 @@ class NoConsumidor:
                 sucesso = self.mempool.adicionar_evento(evento)
 
         print(f"[Mempool] Evento {evento.event_id} entrou na fila? {sucesso}")
+
+        if self.coletor_logs is not None:
+            self.coletor_logs.registrar(
+                level="INFO" if sucesso else "WARN",
+                category="rede_kafka",
+                message=(
+                    f"Evento {evento.event_id} recebido da rede e {'aceito' if sucesso else 'rejeitado'}."
+                ),
+                event_type="evento_recebido_rede",
+                context={
+                    "remetente": remetente,
+                    "event_id": evento.event_id,
+                    "product_id": evento.product_id,
+                },
+            )
 
         if self.monitor_rede is not None:
             self.monitor_rede.registrar_atividade(
@@ -353,6 +568,55 @@ class NoConsumidor:
                 self.monitor_rede.atualizar_no(
                     remetente, status="online", ultimo_evento="evento_recebido"
                 )
+
+    def _processar_configuracao_rede(
+        self,
+        dados: dict[str, object],
+        origem_no: str | None,
+    ) -> None:
+        """Aplica uma configuracao global distribuida pela rede."""
+
+        remetente = origem_no or dados.get("node_id_origem")
+        if remetente == self.node_id:
+            return
+
+        contexto = self.trava if self.trava is not None else nullcontext()
+        with contexto:
+            if self.aceitar_configuracao_rede is not None:
+                sucesso = bool(self.aceitar_configuracao_rede(dados))
+            else:
+                sucesso = False
+
+        if self.monitor_rede is not None:
+            self.monitor_rede.registrar_atividade(
+                "configuracao_rede_recebida",
+                (
+                    f"Configuracao global recebida de {remetente}: "
+                    f"dificuldade={dados.get('dificuldade_global')}."
+                ),
+                "info" if sucesso else "warning",
+                self.node_id,
+            )
+            if isinstance(remetente, str):
+                self.monitor_rede.atualizar_no(
+                    remetente,
+                    status="online",
+                    ultimo_evento="configuracao_rede_recebida",
+                )
+
+        if self.coletor_logs is not None:
+            self.coletor_logs.registrar(
+                level="INFO" if sucesso else "WARN",
+                category="rede_kafka",
+                message=f"Configuracao global recebida de {remetente}.",
+                event_type="configuracao_rede_recebida",
+                context={
+                    "remetente": remetente,
+                    "dificuldade_global": dados.get("dificuldade_global"),
+                    "bloco_ancora_hash": dados.get("bloco_ancora_hash"),
+                    "aplicada": sucesso,
+                },
+            )
 
     def start_listening(self):
         """Alias de compatibilidade para `iniciar_escuta`."""

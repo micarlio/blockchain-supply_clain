@@ -53,13 +53,13 @@ export function MempoolPagina() {
   const countComposite = eventos.filter((evento) => evento.entity_kind === "composite_product").length
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <CabecalhoPagina
         titulo="Fila de Mineração"
         descricao="Acompanhe os eventos pendentes por nó, veja a origem de cada item e dispare mineração manual."
       />
 
-      <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <KpiCompacto
           titulo="Eventos pendentes"
           valor={eventos.length}

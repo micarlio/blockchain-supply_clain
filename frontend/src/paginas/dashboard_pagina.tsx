@@ -115,7 +115,7 @@ export function DashboardPagina() {
           }
           className="p-5"
         >
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             {estados.map((item) => (
               <CartaoNoCluster
                 key={item.no.id}

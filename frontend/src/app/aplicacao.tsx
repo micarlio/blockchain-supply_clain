@@ -12,10 +12,11 @@ const BlockchainPagina = lazy(async () => ({ default: (await import("../paginas/
 const RastreabilidadePagina = lazy(async () => ({ default: (await import("../paginas/rastreabilidade_pagina")).RastreabilidadePagina }))
 const TestesPagina = lazy(async () => ({ default: (await import("../paginas/testes_pagina")).TestesPagina }))
 const NosPagina = lazy(async () => ({ default: (await import("../paginas/nos_pagina")).NosPagina }))
+const LogsPagina = lazy(async () => ({ default: (await import("../paginas/logs_pagina")).LogsPagina }))
 
 function PaginaSuspensa({ Componente }: { Componente: ComponentType }) {
   return (
-    <Suspense fallback={<CarregandoPainel mensagem="Carregando pagina..." />}>
+    <Suspense fallback={<CarregandoPainel mensagem="Carregando página..." />}>
       <Componente />
     </Suspense>
   )
@@ -25,9 +26,9 @@ function PaginaNaoEncontrada() {
   return (
     <div className="flex min-h-[calc(100vh-8rem)] items-center justify-center">
       <div className="max-w-xl rounded-3xl border border-slate-200/80 bg-white p-10 text-center shadow-[0_10px_30px_rgba(15,23,42,0.05)]">
-        <h1 className="text-3xl font-bold tracking-tight text-slate-900">Pagina nao encontrada</h1>
+        <h1 className="text-3xl font-bold tracking-tight text-slate-900">Página não encontrada</h1>
         <p className="mt-3 text-sm text-slate-500">
-          A rota informada nao existe nesta versao do painel. Volte para a visao geral do sistema.
+          A rota informada não existe nesta versão do painel. Volte para a visão geral do sistema.
         </p>
         <a
           href="/"
@@ -52,6 +53,7 @@ export function Aplicacao() {
         <Route path="rastreabilidade" element={<PaginaSuspensa Componente={RastreabilidadePagina} />} />
         <Route path="testes" element={<PaginaSuspensa Componente={TestesPagina} />} />
         <Route path="nos" element={<PaginaSuspensa Componente={NosPagina} />} />
+        <Route path="logs" element={<PaginaSuspensa Componente={LogsPagina} />} />
       </Route>
       <Route path="404" element={<PaginaNaoEncontrada />} />
       <Route path="*" element={<Navigate replace to="/404" />} />

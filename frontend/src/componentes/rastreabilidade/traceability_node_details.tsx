@@ -48,7 +48,7 @@ export function TraceabilityNodeDetails({
     <CartaoPainel
       titulo="Detalhes do nó"
       descricao="Painel contextual do item selecionado dentro da árvore de origem."
-      className="xl:sticky xl:top-6"
+      className="xl:sticky xl:top-20"
       destaque={
         <button
           type="button"

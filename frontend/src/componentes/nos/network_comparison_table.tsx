@@ -4,6 +4,10 @@ import { BadgeStatus } from "../comum/badge_status"
 import { CartaoPainel } from "../comum/cartao_painel"
 import { cx } from "../../lib/util/classe"
 import { encurtarHash, formatarData } from "../../lib/util/formatacao"
+import {
+  rotuloPerfilNo,
+  resumirCapacidadeMineracao,
+} from "../../lib/util/rede_cluster"
 import type { LinhaNoRede, ResumoCluster } from "../../lib/util/rede_cluster"
 
 type Props = {
@@ -52,9 +56,10 @@ export function NetworkComparisonTable({ linhas, resumo }: Props) {
       </div>
 
       <div className="overflow-x-auto rounded-2xl border border-slate-200/70 bg-white">
-        <div className="grid min-w-[1040px] grid-cols-[1.45fr_1.1fr_0.65fr_0.65fr_1.15fr_1.25fr_0.9fr] gap-4 border-b border-slate-200/70 px-4 py-3 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">
+        <div className="grid min-w-[1220px] grid-cols-[1.35fr_1.05fr_1.25fr_0.65fr_0.65fr_1.15fr_1.25fr_0.9fr] gap-4 border-b border-slate-200/70 px-4 py-3 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">
           <div>Nó</div>
           <div>Papel</div>
+          <div>Perfil / mineração</div>
           <div>Altura</div>
           <div>Mempool</div>
           <div>Hash da ponta</div>
@@ -73,7 +78,7 @@ export function NetworkComparisonTable({ linhas, resumo }: Props) {
               <div
                 key={linha.no.id}
                 className={cx(
-                  "grid min-w-[1040px] grid-cols-[1.45fr_1.1fr_0.65fr_0.65fr_1.15fr_1.25fr_0.9fr] gap-4 px-4 py-3.5 text-sm",
+                  "grid min-w-[1220px] grid-cols-[1.35fr_1.05fr_1.25fr_0.65fr_0.65fr_1.15fr_1.25fr_0.9fr] gap-4 px-4 py-3.5 text-sm",
                   linha.ativo ? "bg-primary/[0.03]" : "bg-white",
                 )}
               >
@@ -87,6 +92,18 @@ export function NetworkComparisonTable({ linhas, resumo }: Props) {
 
                 <div>
                   <NetworkRoleBadge papel={linha.papel} compacto />
+                </div>
+
+                <div>
+                  <p className="font-semibold tracking-tight text-slate-900">
+                    {rotuloPerfilNo(linha.perfilNo)}
+                  </p>
+                  <p className="mt-0.5 text-xs text-slate-500">
+                    auto: {linha.mineracaoAutomaticaAtiva ? "on" : "off"}
+                  </p>
+                  <p className="mt-1 text-xs text-slate-500">
+                    {resumirCapacidadeMineracao(linha.capacidadeMineracao)}
+                  </p>
                 </div>
 
                 <div className={classeDiferenca(alturaDivergente)}>{linha.altura ?? "-"}</div>

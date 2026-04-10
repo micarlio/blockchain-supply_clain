@@ -1,3 +1,7 @@
+x-network-settings: &network-settings
+  NETWORK_POW_DIFFICULTY: "4"
+  NETWORK_MAX_EVENTS_PER_BLOCK: "4"
+
 services:
   kafka:
     image: confluentinc/cp-kafka:7.5.0
@@ -38,6 +42,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: node-alpha
+    environment: *network-settings
     depends_on:
       kafka:
         condition: service_healthy
@@ -68,6 +73,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: node-beta
+    environment: *network-settings
     depends_on:
       kafka:
         condition: service_healthy
@@ -99,6 +105,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: node-gamma
+    environment: *network-settings
     depends_on:
       kafka:
         condition: service_healthy
@@ -120,6 +127,37 @@ services:
       - "8003:8003"
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8003/estado', timeout=5)"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 20s
+
+  node-evil:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: node-evil
+    environment: *network-settings
+    depends_on:
+      kafka:
+        condition: service_healthy
+      init-kafka:
+        condition: service_completed_successfully
+    command:
+      [
+        "python",
+        "-m",
+        "scripts.iniciar_no_kafka",
+        "node-evil",
+        "--porta-api",
+        "8004",
+        "--broker-url",
+        "kafka:29092"
+      ]
+    ports:
+      - "8004:8004"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8004/estado', timeout=5)"]
       interval: 10s
       timeout: 10s
       retries: 10
